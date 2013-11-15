@@ -90,4 +90,30 @@ object Chapter3 {
     }
     iter(as, Nil)
   }
+
+  /** Exercise 13
+    *
+    * Define foldLeft in terms of foldRight
+    * Define foldRight in terms of foldLeft
+    */
+  def foldLeft2[A, B](as: List[A], z: B)(f: (B, A) => B): B = {
+    as.foldRight(identity[B] _) { case (a, b) => (acc: B) => b(f(acc, a)) } (z)
+  }
+
+  def foldRight2[A, B](as: List[A], z: B)(f: (A, B) => B): B = {
+    as.foldLeft(identity[B] _) { case (b, a) => (acc: B) => b(f(a, acc)) } (z)
+  }
+
+  /** Exercise 14
+    *
+    * Define append in terms of foldRight
+    */
+  def append[A](xs: List[A], ys: List[A]): List[A] = xs.foldRight(ys)(_ :: _)
+
+  /** Exercise 15
+    *
+    * Write a function that concatenates a list of lists. It should be linear in the total length of all the lists.
+    */
+  def flatten[A](xs: List[List[A]]): List[A] = xs.foldRight(List.empty[A])(append)
+  /** To be so, it has to use foldRight here - otherwise it would be re-appending the accumulator each time */
 }

@@ -56,5 +56,21 @@ class Chapter3Spec extends Specification with ScalaCheck {
     Prop.forAll { (as: List[Int]) =>
       reverse(as) == as.reverse
     }
+  } ^ "foldLeft2" ! check {
+    Prop.forAll { (as: List[Int]) =>
+      foldLeft2(as, 0)(_ - _) == as.foldLeft(0)(_ - _)
+    }
+  } ^ "foldRight2" ! check {
+    Prop.forAll { (as: List[Int]) =>
+      foldRight2(as, 0)(_ - _) == as.foldRight(0)(_ - _)
+    }
+  } ^ "append" ! check {
+    Prop.forAll { (xs: List[Int], ys: List[Int]) =>
+      append(xs, ys) == xs ++ ys
+    }
+  } ^ "flatten" ! check {
+    Prop.forAll { (xs: List[List[Int]]) =>
+      flatten(xs) == xs.flatten
+    }
   }
 }
