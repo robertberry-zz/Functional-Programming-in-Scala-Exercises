@@ -72,5 +72,39 @@ class Chapter3Spec extends Specification with ScalaCheck {
     Prop.forAll { (xs: List[List[Int]]) =>
       flatten(xs) == xs.flatten
     }
+  } ^ "add1" ! check {
+    Prop.forAll { (xs: List[Int]) =>
+      add1(xs) == xs.map(_ + 1)
+    }
+  } ^ "stringify" ! check {
+    Prop.forAll { (xs: List[Double]) =>
+      stringify(xs) == xs.map(_.toString)
+    }
+  } ^ "mapF" ! check {
+    Prop.forAll { (xs: List[Int]) =>
+      mapF(xs)(x => x * x) == xs.map(x => x * x)
+    }
+  } ^ "filterF" ! check {
+    Prop.forAll { (xs: List[Int]) =>
+      filterF(xs)(_ > 0) == xs.filter(_ > 0)
+    }
+  } ^ "flatMap" ! check {
+    Prop.forAll { (xs: List[Int]) =>
+      def f(n: Int) = List(n - 1, n, n + 1)
+
+      flatMap(xs)(f) == xs.flatMap(f)
+    }
+  } ^ "filterF2" ! check {
+    Prop.forAll { (xs: List[Int]) =>
+      filterF(xs)(_ > 0) == filterF2(xs)(_ > 0)
+    }
+  } ^ "sum2" ! check {
+    Prop.forAll { (xs: List[Int], ys: List[Int]) =>
+      sum2(xs, ys) == (xs zip ys map { case ((n1, n2)) => n1 + n2 })
+    }
+  } ^ "map2" ! check {
+    Prop.forAll { (xs: List[Int], ys: List[Int]) =>
+      sum2(xs, ys) == map2(xs, ys)(_ + _)
+    }
   }
 }

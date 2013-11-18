@@ -116,4 +116,75 @@ object Chapter3 {
     */
   def flatten[A](xs: List[List[A]]): List[A] = xs.foldRight(List.empty[A])(append)
   /** To be so, it has to use foldRight here - otherwise it would be re-appending the accumulator each time */
+
+  /** Exercise 16
+    *
+    * Write a function that transfroms a list of integers by adding 1 to each element
+    */
+  def add1(xs: List[Int]): List[Int] = xs match {
+    case Nil => Nil
+    case h :: t => h + 1 :: add1(t)
+  }
+
+  /** Exercise 17
+    *
+    * Write a function that turns a list of doubles into a list of strings
+    */
+  def stringify(xs: List[Double]): List[String] = xs match {
+    case Nil => Nil
+    case h :: t => h.toString :: stringify(t)
+  }
+
+  /** Exercise 18
+    *
+    * Write a function map that generalizes modifying each element in a list
+    */
+  def mapF[A, B](as: List[A])(f: A => B): List[B] = as match {
+    case Nil => Nil
+    case h :: t => f(h) :: mapF(t)(f)
+  }
+
+  /** Exercise 19
+    *
+    * Write a function filter that removes elements from a list unless they satisfy the given predicate
+    */
+  def filterF[A](as: List[A])(f: A => Boolean): List[A] =
+    as.foldRight(List.empty[A])((a, acc) => if (f(a)) a :: acc else acc)
+
+  /** Exercise 20
+    *
+    * Implement flatMap, that works like map except that the function will return a list, and that the resultant values
+    * should be flattened into a single list
+    */
+  def flatMap[A, B](as: List[A])(f: A => List[B]): List[B] = as match {
+    case Nil => Nil
+    case h :: t => f(h) ++ flatMap(t)(f)
+  }
+
+  /** Exercise 21
+    *
+    * Implement filter in terms of flatMap
+    */
+  def filterF2[A, B](as: List[A])(f: A => Boolean): List[A] = flatMap(as)(a => if (f(a)) List(a) else Nil)
+
+  /** Exercise 22
+    *
+    * Write a function that accepts two lists and constructs a new list by adding corresponding elements
+    */
+  def sum2(xs: List[Int], ys: List[Int]): List[Int] = (xs, ys) match {
+    case (Nil, _) => Nil
+    case (_, Nil) => Nil
+    case (x :: xs, y :: ys) => (x + y) :: sum2(xs, ys)
+  }
+
+  /**
+   * Exercise 23
+   *
+   * Generalize the above function so that it's not specific to integers or addition
+   */
+  def map2[A, B, C](as: List[A], bs: List[B])(f: (A, B) => C): List[C] = (as, bs) match {
+    case (Nil, _) => Nil
+    case (_, Nil) => Nil
+    case (a :: as, b :: bs) => f(a, b) :: map2(as, bs)(f)
+  }
 }
