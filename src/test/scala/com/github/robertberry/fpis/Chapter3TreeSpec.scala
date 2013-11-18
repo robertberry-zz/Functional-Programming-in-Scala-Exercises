@@ -49,5 +49,33 @@ class Chapter3TreeSpec extends Specification with ScalaCheck with ArbitraryTrees
     Prop.forAll { (tree: Tree[Int]) =>
       maximumT(tree) == flattenTree(tree).max
     }
+  } ^ "depthT" ! check {
+    List(
+      Leaf(1) -> 1,
+      Branch(Branch(Leaf(1), Leaf(1)), Leaf(1)) -> 3,
+      Branch(Leaf(1), Branch(Leaf(1), Leaf(1))) -> 3,
+      Branch(Branch(Leaf(1), Branch(Leaf(1), Leaf(1))), Leaf(1)) -> 4
+    ) forall { case (tree, expectedDepth) => depthT(tree) == expectedDepth }
+  } ^ "mapT" ! check {
+    Prop.forAll { (tree: Tree[Int]) =>
+      flattenTree(mapT(tree)(x => x * x)) == flattenTree(tree).map(x => x * x)
+    }
+  } ^ "fSize" ! check {
+    Prop.forAll { (tree: Tree[Int]) =>
+      fSize(tree) == sizeT(tree)
+    }
+  } ^ "fMax" ! check {
+    Prop.forAll { (tree: Tree[Int]) =>
+      fMax(tree) == maximumT(tree)
+    }
+  } ^ "fDepth" ! check {
+    Prop.forAll { (tree: Tree[Int]) =>
+      fDepth(tree) == depthT(tree)
+    }
+  } ^ "fMap" ! check {
+    Prop.forAll { (tree: Tree[Int]) =>
+      fMap(tree)(x => x * x) == mapT(tree)(x => x * x)
+    }
   }
+
 }

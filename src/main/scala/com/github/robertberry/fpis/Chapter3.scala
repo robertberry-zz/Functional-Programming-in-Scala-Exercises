@@ -216,4 +216,38 @@ object Chapter3 {
     case Leaf(n) => n
     case Branch(left, right) => maximumT(left) max maximumT(right)
   }
+
+  /** Exercise 27
+    *
+    * Write a function that computes the maximum path length from the root to any leaf
+    */
+  def depthT(tree: Tree[_]): Int = tree match {
+    case Leaf(n) => 1
+    case Branch(left, right) => 1 + (depthT(left) max depthT(right))
+  }
+
+  /** Exercise 28
+    *
+    * Write a map for Tree, analogous to that for List
+    */
+  def mapT[A, B](tree: Tree[A])(f: A => B): Tree[B] = tree match {
+    case Leaf(a) => Leaf(f(a))
+    case Branch(left, right) => Branch(mapT(left)(f), mapT(right)(f))
+  }
+
+  /** Exercise 29
+    *
+    * Write a fold for Tree, analogous to that for List
+    *
+    * Rewrite size, maximum, depth, and map in terms of fold
+    */
+  def foldT[A, B](tree: Tree[A])(f: A => B)(g: (B, B) => B): B = tree match {
+    case Leaf(a) => f(a)
+    case Branch(left, right) => g(foldT(left)(f)(g), foldT(right)(f)(g))
+  }
+
+  def fSize(tree: Tree[_]): Int = foldT(tree)(_ => 1)((left, right) => left + right + 1)
+  def fMax(tree: Tree[Int]): Int = foldT(tree)(identity)(_ max _)
+  def fDepth(tree: Tree[_]): Int = foldT(tree)(_ => 1)((x, y) => (x max y) + 1)
+  def fMap[A, B](tree: Tree[A])(f: A => B): Tree[B] = foldT(tree)(x => Leaf(f(x)): Tree[B])((x, y) => Branch(x, y))
 }
