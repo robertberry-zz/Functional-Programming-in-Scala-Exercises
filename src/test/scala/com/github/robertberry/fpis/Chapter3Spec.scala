@@ -106,5 +106,9 @@ class Chapter3Spec extends Specification with ScalaCheck {
     Prop.forAll { (xs: List[Int], ys: List[Int]) =>
       sum2(xs, ys) == map2(xs, ys)(_ + _)
     }
+  } ^ "hasSubsequence" ! check {
+    Prop.forAll { (xs: List[Int], ys: List[Int], zs: List[Int]) =>
+      hasSubsequence(xs ++ ys ++ zs, ys)
+    }
   }
 }

@@ -187,4 +187,33 @@ object Chapter3 {
     case (_, Nil) => Nil
     case (a :: as, b :: bs) => f(a, b) :: map2(as, bs)(f)
   }
+
+  /** Exercise 24
+    *
+    * Implement hasSubsequence, checking whether a list contains another list
+    */
+  def hasSubsequence[A](l: List[A], sub: List[A]): Boolean =
+    l.length >= sub.length && (l.take(sub.length) == sub || hasSubsequence(l.tail, sub))
+
+  sealed trait Tree[+A]
+  case class Leaf[A](value: A) extends Tree[A]
+  case class Branch[A](left: Tree[A], right: Tree[A]) extends Tree[A]
+
+  /** Exercise 25
+    *
+    * Write a function size that counts the number of nodes (leaves and branches) in a tree
+    */
+  def sizeT(tree: Tree[_]): Int = tree match {
+    case Leaf(_) => 1
+    case Branch(left, right) => sizeT(left) + sizeT(right) + 1
+  }
+
+  /** Exercise 26
+    *
+    * Write a function maximum that returns the maximum element of a Tree of Int
+    */
+  def maximumT(tree: Tree[Int]): Int = tree match {
+    case Leaf(n) => n
+    case Branch(left, right) => maximumT(left) max maximumT(right)
+  }
 }
