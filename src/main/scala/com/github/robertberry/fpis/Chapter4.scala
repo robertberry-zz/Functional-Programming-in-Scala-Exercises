@@ -103,8 +103,8 @@ object Chapter4 {
     }
 
     def orElse[EE >: E, B >: A](b: => Either2[EE, B]): Either2[EE, B] = this match {
-      case _: Left2 => this
-      case _ => b
+      case Left2(_) => b
+      case _ => this
     }
 
     def map2[EE >: E, B, C](b: Either2[EE, B])(f: (A, B) => C): Either2[EE, C] = (this, b) match {
@@ -116,4 +116,36 @@ object Chapter4 {
 
   case class Left2[+E](value: E) extends Either2[E, Nothing]
   case class Right2[+A](value: A) extends Either2[Nothing, A]
+
+  /** Exercise 7
+    *
+    * Implement sequence and traverse for Either
+    */
+  def sequence3[A, B](as: List[Either2[A, B]]): Either2[A, List[B]] = {
+    @annotation.tailrec def iter(as: List[Either2[A, B]], acc: List[B]): Either2[A, List[B]] = as match {
+      case (left @ Left2(_)) :: _ => left
+      case Right2(a) :: t => iter(t, a :: acc)
+      case Nil => Right2(acc.reverse)
+    }
+    iter(as, Nil)
+  }
+
+  def traverse3[A, B, C](as: List[A])(f: A => Either2[B, C]): Either2[B, List[C]] = {
+    @annotation.tailrec def iter(as: List[A], acc: List[C]): Either2[B, List[C]] = as match {
+      case h :: t => f(h) match {
+        case left @ Left2(_) => left
+        case Right2(c) => iter(t, c :: acc)
+      }
+      case Nil => Right2(acc.reverse)
+    }
+    iter(as, Nil)
+  }
+
+  /** Exercise 8
+    *
+    * Implement a version of map2 that returns both errors if more than one error occurs
+    *
+    * Could a better data structure work for this? If so, create it and implement orElse, traverse, and sequence for it
+    */
+
 }
