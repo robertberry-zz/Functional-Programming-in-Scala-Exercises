@@ -154,7 +154,7 @@ object Chapter4 {
 
   sealed trait Validation[+E, +A] {
     def isSuccess = this match {
-      case Success(_) => true
+      case Validated(_) => true
       case _ => false
     }
 
@@ -163,13 +163,34 @@ object Chapter4 {
     def orElse[EE >: E, AA >: A](other: Validation[EE, AA]): Validation[EE, AA] = {
       if (isSuccess) this else (this, other) match {
         case (ErrorTrail(errors), ErrorTrail(moreErrors)) => ErrorTrail(errors ++ moreErrors)
-        case (_, success @ Success(_)) => success
+        case (_, success @ Validated(_)) => success
       }
     }
 
-
+    def map[B](f: A => B): Validation[E, B] = this match {
+      case Validated(value) => Validated(f(value))
+      case ErrorTrail(errors) => ErrorTrail(errors)
+    }
   }
 
   final case class ErrorTrail[E](errors: List[E]) extends Validation[E, Nothing]
-  final case class Success[A](value: A) extends Validation[Nothing, A]
+  final case class Validated[A](value: A) extends Validation[Nothing, A]
+
+  def sequence4[A, B](as: List[Validation[A, B]]): Validation[A, List[B]] = {
+    /** This function seems over-complicated for what it actually achieves. TODO: Refactor */
+    @annotation.tailrec def iter(as: List[Validation[A, B]], acc: Validation[A, List[B]]): Validation[A, List[B]] = {
+      as match {
+        case Nil => acc.map(_.reverse)
+        case ErrorTrail(headErrors) :: t => iter(t, acc match {
+          case ErrorTrail(errors) => ErrorTrail(errors ++ headErrors)
+          case Validated(_) => ErrorTrail(headErrors)
+        })
+        case Validated(value) :: t => iter(t, acc match {
+          case Validated(values) => Validated(value :: values)
+          case ErrorTrail(_) => acc
+        })
+      }
+    }
+    iter(as, Validated(Nil))
+  }
 }
