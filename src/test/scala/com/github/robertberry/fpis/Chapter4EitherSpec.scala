@@ -83,5 +83,21 @@ class Chapter4EitherSpec extends Specification with ScalaCheck with ArbitraryEit
 
       if (xs.exists(_ < 0)) traversed == err else traversed == Right2(xs.map(_ + 1))
     }
+  } ^ "map2b1" ! check {
+    Prop.forAll { (err1: String, err2: String) =>
+      map2b(Left2(err1), Left2(err2))((_: Int) + (_: Int)) == Left2(List(err1, err2))
+    }
+  } ^ "map2b2" ! check {
+    Prop.forAll { (err: String, value: Right2[Int]) =>
+      def f(i: Int, j: Int) = i + j
+
+      val errList = Left2(List(err))
+
+      map2b(Left2(err), value)(f) == errList && map2b(value, Left2(err))(f) == errList
+    }
+  } ^ "map2b3" ! check {
+    Prop.forAll { (i: Int, j: Int) =>
+      map2b(Right2(i), Right2(j))((_: Int) + (_: Int)) == Right2(i + j)
+    }
   }
 }

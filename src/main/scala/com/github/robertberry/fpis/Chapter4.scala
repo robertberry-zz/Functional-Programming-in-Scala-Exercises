@@ -147,5 +147,29 @@ object Chapter4 {
     *
     * Could a better data structure work for this? If so, create it and implement orElse, traverse, and sequence for it
     */
+  def map2b[A, B, C, D](e1: Either2[A, B], e2: Either2[A, C])(f: (B, C) => D): Either2[List[A], D] = (e1, e2) match {
+    case (Right2(b), Right2(c)) => Right2(f(b, c))
+    case _ => Left2(List(e1, e2) collect { case Left2(error) => error })
+  }
 
+  sealed trait Validation[+E, +A] {
+    def isSuccess = this match {
+      case Success(_) => true
+      case _ => false
+    }
+
+    def isFailure = !isSuccess
+
+    def orElse[EE >: E, AA >: A](other: Validation[EE, AA]): Validation[EE, AA] = {
+      if (isSuccess) this else (this, other) match {
+        case (ErrorTrail(errors), ErrorTrail(moreErrors)) => ErrorTrail(errors ++ moreErrors)
+        case (_, success @ Success(_)) => success
+      }
+    }
+
+
+  }
+
+  final case class ErrorTrail[E](errors: List[E]) extends Validation[E, Nothing]
+  final case class Success[A](value: A) extends Validation[Nothing, A]
 }
