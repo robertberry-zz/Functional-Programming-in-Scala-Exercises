@@ -27,14 +27,26 @@ class Chapter5Spec extends Specification with ScalaCheck with ArbitraryStream {
       toStream(xs).toList == xs
     }
   } ^ "take" ! check {
-    Prop.forAll { (xs: List[Int], n: Int) =>
-      toStream(xs).take(n).toList == xs.take(n)
+    Prop.forAll { (xs: Stream[Int], n: Int) =>
+      xs.take(n).toList == xs.toList.take(n)
     }
   } ^ "takeWhile" ! check {
-    Prop.forAll { (xs: List[Int], n: Int) =>
+    Prop.forAll { (xs: Stream[Int], n: Int) =>
       def f(i: Int) = i > n
 
-      toStream(xs).takeWhile(f).toList == xs.takeWhile(f)
+      xs.takeWhile(f).toList == xs.toList.takeWhile(f)
+    }
+  } ^ "forAll" ! check {
+    Prop.forAll { (xs: Stream[Int], n: Int) =>
+      def f(i: Int) = i > n
+
+      xs.forAll(f) == xs.toList.forall(f)
+    }
+  } ^ "takeWhile2" ! check {
+    Prop.forAll { (xs: Stream[Int], n: Int) =>
+      def f(i: Int) = i > n
+
+      xs.takeWhile2(f).toList == xs.toList.takeWhile(f)
     }
   }
 }
