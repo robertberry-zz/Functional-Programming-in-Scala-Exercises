@@ -78,10 +78,55 @@ object Chapter5 {
       foldRight(Stream.empty[A])((a, b) => if (p(a)) Stream.cons(a, b) else Empty)
     }
 
+    /** Exercise 6
+      *
+      * Write an implementation of uncons in terms of foldRight
+      */
+    def uncons2: Option[Cons[A]] = {
+      foldRight(Option.empty[Cons[A]]) {
+        case (a: A, acc) => Some(new Cons[A] {
+          def head: A = a
+
+          def tail: Stream[A] = acc.getOrElse(Stream.empty[A])
+        })
+      }
+    }
+
+    /** Make foldRight an abstract method and implement it in the subclasses */
+    def foldRight2[B](z: => B)(f: (A, => B) => B): B
+
+    /** Exercise 7
+      *
+      * Implement map, filter, append and flatMap in terms of foldRight
+      */
+    def map[B](f: A => B): Stream[B] = foldRight(Stream.empty[B]) {
+      case (a, acc) => Stream.cons(f(a), acc)
+    }
+
+    def filter(f: A => Boolean): Stream[A] = foldRight(Stream.empty[A]) {
+      case (a, acc) if f(a) => Stream.cons(a, acc)
+      case (a, acc) => acc
+    }
+
+    def append[AA >: A](ys: Stream[AA]): Stream[AA] = foldRight(ys) {
+      case (a, acc) => Stream.cons(a, acc)
+    }
+
+    def flatMap[B](f: A => Stream[B]) = foldRight(Stream.empty[B]) {
+      case (a, acc) => f(a).append(acc)
+    }
+
+    def drop(n: Int): Stream[A]
   }
 
   object Empty extends Stream[Nothing] {
     val uncons = None
+
+    override def toString = "<NilStream>"
+
+    def foldRight2[B](z: => B)(f: (Nothing, => B) => B): B = z
+
+    def drop(n: Int) = Empty
   }
 
   sealed abstract class Cons[+A] extends Stream[A] {
@@ -90,10 +135,39 @@ object Chapter5 {
     def tail: Stream[A]
 
     val uncons = Some(this)
+
+    override def toString = s"$head #:: <Stream>"
+
+    def foldRight2[B](z: => B)(f: (A, => B) => B): B = f(head, tail.foldRight2(z)(f))
+
+    def drop(n: Int) = if (n <= 0) this else tail.drop(n - 1)
   }
 
   def toStream[A](xs: List[A]): Stream[A] = xs match {
     case Nil => Empty
     case h :: t => Stream.cons(h, toStream(t))
   }
+
+  /** Exercise 8
+    *
+    * Write a function that generates an infinite stream of a given constant
+    */
+  def constant[A](a: A): Stream[A] = Stream.cons(a, constant(a))
+
+  /** Exercise 9
+    *
+    * Write a function that generates an infinite stream of integers starting from n
+    */
+  def from(n: Int): Stream[Int] = Stream.cons(n, from(n + 1))
+
+  /** Exercise 10
+    *
+    * Write a function fibs that generates a stream of fibonacci numbers
+    */
+  def zipWith[A, B, C](as: Stream[A], bs: Stream[B])(f: (A, B) => C): Stream[C] = (as.uncons, bs.uncons) match {
+    case (Some(ac), Some(bc)) => Stream.cons(f(ac.head, bc.head), zipWith(ac.tail, bc.tail)(f))
+    case _ => Stream.empty[C]
+  }
+
+  def fibs: Stream[Int] = Stream.cons(0, Stream.cons(1, zipWith(fibs, fibs.drop(1))(_ + _)))
 }

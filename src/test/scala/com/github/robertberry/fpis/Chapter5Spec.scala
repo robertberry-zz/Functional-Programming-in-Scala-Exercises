@@ -48,5 +48,72 @@ class Chapter5Spec extends Specification with ScalaCheck with ArbitraryStream {
 
       xs.takeWhile2(f).toList == xs.toList.takeWhile(f)
     }
-  }
+  } ^ "uncons2" ! check {
+    Prop.forAll { (xs: Stream[Int]) =>
+    /** Because we're not using case classes for this (and can't really, due to the nature of the lazy computations),
+      * no equality method is defined on the Stream itself
+      */
+      xs.uncons.isDefined == xs.uncons2.isDefined
+    }
+  } ^ "foldRight2" ! check {
+    Prop.forAll { (xs: Stream[Int]) =>
+      xs.foldRight(0)(_ - _) == xs.foldRight2(0)(_ - _)
+    }
+  } ^ "map" ! check {
+    Prop.forAll { (xs: Stream[Int]) =>
+      def f(i: Int) = i * i
+
+      xs.map(f).toList == xs.toList.map(f)
+    }
+  } ^ "filter" ! check {
+    def f(i: Int) = i > 0
+
+    Prop.forAll { (xs: Stream[Int]) =>
+      xs.filter(f).toList == xs.toList.filter(f)
+    }
+  } ^ "append" ! check {
+    Prop.forAll { (xs: Stream[Int], ys: Stream[Int]) =>
+      xs.append(ys).toList == xs.toList ++ ys.toList
+    }
+  } ^ "flatMap" ! check {
+    def f(i: Int) = Stream.cons(i, Stream.cons(i + 1, Stream.empty))
+
+    Prop.forAll { (xs: Stream[Int]) =>
+      xs.flatMap(f).toList == xs.toList.flatMap(f(_).toList)
+    }
+  } ^ "constant" ! check {
+    Prop.forAll { (x: Int) =>
+      Prop.forAll(Gen.chooseNum(0, 50)) { (n: Int) =>
+        constant(x).take(n).toList == List.fill(n)(x)
+      }
+    }
+  } ^ "from" ! check {
+    Prop.forAll { (x: Int) =>
+      Prop.forAll(Gen.chooseNum(1, 50)) { (n: Int) =>
+        def listFrom(x: Int, n: Int, acc: List[Int] = Nil): List[Int] =
+          if (n == 0) acc.reverse else listFrom(x + 1, n - 1, x :: acc)
+        from(x).take(n).toList == listFrom(x, n)
+      }
+    }
+  } ^ "drop" ! check {
+    Prop.forAll(Gen.chooseNum(0, 50)) { (n: Int) =>
+      Prop.forAll { (xs: Stream[Int]) =>
+        xs.drop(n).toList == xs.toList.drop(n)
+      }
+    }
+  } ^ "zipWith" ! check {
+    Prop.forAll { (xs: Stream[Int], ys: Stream[Int]) =>
+      zipWith(xs, ys)(_ + _).toList == xs.toList.zip(ys.toList).map({ case ((x: Int, y: Int)) => x + y })
+    }
+  } /*^ "fibs" ! {
+    val firstHundredFibs = fibs.take(100).toList
+
+    println(firstHundredFibs)
+
+    (for {
+      i <- firstHundredFibs
+      j <- firstHundredFibs.drop(1)
+      k <- firstHundredFibs.drop(2)
+    } yield (i + j) mustEqual k).reduce(_ and _)
+  } */
 }
