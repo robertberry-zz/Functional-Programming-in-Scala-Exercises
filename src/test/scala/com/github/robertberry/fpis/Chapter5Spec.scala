@@ -105,15 +105,32 @@ class Chapter5Spec extends Specification with ScalaCheck with ArbitraryStream {
     Prop.forAll { (xs: Stream[Int], ys: Stream[Int]) =>
       zipWith(xs, ys)(_ + _).toList == xs.toList.zip(ys.toList).map({ case ((x: Int, y: Int)) => x + y })
     }
-  } /*^ "fibs" ! {
-    val firstHundredFibs = fibs.take(100).toList
-
-    println(firstHundredFibs)
+  } ^ "fibs" ! {
+    val firstTenFibs = fibs.take(10).toList
 
     (for {
-      i <- firstHundredFibs
-      j <- firstHundredFibs.drop(1)
-      k <- firstHundredFibs.drop(2)
+      ((i, j), k) <- firstTenFibs.zip(firstTenFibs.drop(1)).zip(firstTenFibs.drop(2))
     } yield (i + j) mustEqual k).reduce(_ and _)
-  } */
+  } ^ "fibs2" ! {
+    fibs2.take(20).toList == fibs.take(20).toList
+  } ^ "constant2" ! check {
+    Prop.forAll { i: Int =>
+      constant2(i).take(30).forAll(_ == i)
+    }
+  } ^ "ones2" ! {
+    ones2.take(50).forAll(_ == 1)
+  } ^ "startsWith" ! {
+    Prop.forAll { (xs: Stream[Int], ys: Stream[Int]) =>
+      startsWith(xs.append(ys), xs) && startsWith(xs, xs) && (xs.isEmpty || !startsWith(xs, xs.map(_ + 1)))
+    }
+  } ^ "tails" ! {
+    Prop.forAll { (xs: Stream[Int]) =>
+      tails(xs).toList.length == xs.toList.length
+    }
+  } ^ "hasSubsequence" ! {
+    Prop.forAll { (xs: Stream[Int], ys: Stream[Int], zs: Stream[Int]) =>
+      val appended = xs.append(ys).append(zs)
+      appended.isEmpty || hasSubsequence(appended, xs) && hasSubsequence(appended, ys) && hasSubsequence(appended, zs)
+    }
+  }
 }

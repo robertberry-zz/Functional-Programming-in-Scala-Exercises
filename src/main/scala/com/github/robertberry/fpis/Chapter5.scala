@@ -170,4 +170,69 @@ object Chapter5 {
   }
 
   def fibs: Stream[Int] = Stream.cons(0, Stream.cons(1, zipWith(fibs, fibs.drop(1))(_ + _)))
+
+  /** Exercise 11
+    *
+    * Write a more general stream building function. It takes an initial state, and a function for producing both the
+    * next state and the next value in the stream
+    */
+  def unfold[A, S](z: S)(f: S => Option[(A, S)]): Stream[A] = f(z) match {
+    case Some((a, s)) => Stream.cons(a, unfold(s)(f))
+    case None => Stream.empty[A]
+  }
+
+  /** Exercise 12
+    *
+    * Write fibs, from, constant, and ones in terms of unfold
+    */
+  def fibs2 = Stream.cons(0, Stream.cons(1, unfold((0, 1)) {
+    case (n1, n2) => {
+      val n3 = n1 + n2
+      Some(n3, (n2, n3))
+    }
+  }))
+
+  def from2(n: Int) = unfold(n) { i => Some((i, i + 1)) }
+
+  def constant2(n: Int) = unfold(n) { i => Some((i, i)) }
+
+  def ones2 = unfold(1) { one => Some((one, one)) }
+
+  /** Exercise 13
+    *
+    * Define startsWith, which tests whether s starts with s2
+    */
+  def startsWith[A](s: Stream[A], s2: Stream[A]): Boolean = {
+    unfold((s, s2)) {
+      case (haystack: Cons[A], needle: Cons[A]) => Some((haystack.head == needle.head, (haystack.tail, needle.tail)))
+      case (_, Empty) => None
+      case (_, _) => Some((false, (Empty, Empty)))
+    }.forAll(identity)
+  }
+
+  /** Exercise 14
+    *
+    * Define tails using unfold
+    */
+  def tails[A](s: Stream[A]): Stream[Stream[A]] = {
+    unfold(s) {
+      case Empty => None
+      case cons: Cons[A] => Some((cons, cons.tail))
+    }
+  }
+
+  def hasSubsequence[A](s: Stream[A], s2: Stream[A]): Boolean = tails(s).exists(startsWith(_, s2))
+
+  /** Exercise 15
+    *
+    * Generalize tails to the function scanRight
+    */
+  def scanRight[A, B](s: Stream[A])(z: => B)(f: (A, => B) => B): Stream[B] = s match {
+    case Empty => Stream(z)
+    case cons: Cons[A] => {
+      val rest = scanRight(cons.tail)(z)(f)
+      val b = f(cons.head, rest.uncons.get.head)
+      Stream.cons(b, rest)
+    }
+  }
 }
