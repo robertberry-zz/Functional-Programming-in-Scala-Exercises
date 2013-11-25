@@ -72,4 +72,50 @@ object Chapter6 {
 
     iter(count, (Nil, rng))
   }
+
+  type Rand[+A] = RNG => (A, RNG)
+
+  object Rand {
+    val int: Rand[Int] = _.nextInt
+
+    def unit[A](a: A): Rand[A] = rng => (a, rng)
+
+    def map[A, B](s: Rand[A])(f: A => B): Rand[B] =
+      rng => {
+        val (a, rng2) = s(rng)
+        (f(a), rng2)
+      }
+
+    /** Exercise 5
+      *
+      * Use map to reimplement double in a more elegant way
+      */
+    val double: Rand[Double] = map(int) { n =>
+      (((n.toDouble - Int.MinValue) / (Int.MaxValue.toDouble - Int.MinValue)) * 2) - 1
+    }
+
+    /** Exercise 6
+      *
+      * Write the implementation of map2, which takes two Rands and a function for combining their results, then returns
+      * a new Rand that generates this combination
+      */
+    def map2[A, B, C](ra: Rand[A], rb: Rand[B])(f: (A, B) => C): Rand[C] =
+      rng => {
+        val (a, rng2) = ra(rng)
+        val (b, rng3) = rb(rng2)
+        (f(a, b), rng3)
+      }
+
+    /** Exercise 7
+      *
+      * Implement sequence, to combine an arbitrary-sized list of Rands into a single Rand
+      */
+    def sequence[A](rs: List[Rand[A]]): Rand[List[A]] =
+      rs match {
+        case Nil => unit(Nil)
+        case h :: t => map2(h, sequence(t))(_ :: _)
+      }
+
+    def ints(count: Int): Rand[List[Int]] = sequence(List.fill(count)(int))
+  }
 }

@@ -21,7 +21,9 @@ trait ArbitraryTrees {
 
   implicit def arbitraryTree[A: Arbitrary]: Arbitrary[Tree[A]] = Arbitrary {
     for {
-      isLeaf <- arbitrary[Boolean]
+      /* isLeaf <- arbitrary[Boolean] :: Can't do this as it often overflows the stack */
+      n <- Gen.chooseNum(1, 3)
+      isLeaf = n != 3
       tree <- if (isLeaf) arbitrary[Leaf[A]] else arbitrary[Branch[A]]
     } yield tree
   }
@@ -77,5 +79,4 @@ class Chapter3TreeSpec extends Specification with ScalaCheck with ArbitraryTrees
       fMap(tree)(x => x * x) == mapT(tree)(x => x * x)
     }
   }
-
 }
