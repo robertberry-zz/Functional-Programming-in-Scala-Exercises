@@ -119,18 +119,22 @@ class Chapter5Spec extends Specification with ScalaCheck with ArbitraryStream {
     }
   } ^ "ones2" ! {
     ones2.take(50).forAll(_ == 1)
-  } ^ "startsWith" ! {
+  } ^ "startsWith" ! check {
     Prop.forAll { (xs: Stream[Int], ys: Stream[Int]) =>
       startsWith(xs.append(ys), xs) && startsWith(xs, xs) && (xs.isEmpty || !startsWith(xs, xs.map(_ + 1)))
     }
-  } ^ "tails" ! {
+  } ^ "tails" ! check {
     Prop.forAll { (xs: Stream[Int]) =>
       tails(xs).toList.length == xs.toList.length
     }
-  } ^ "hasSubsequence" ! {
+  } ^ "hasSubsequence" ! check {
     Prop.forAll { (xs: Stream[Int], ys: Stream[Int], zs: Stream[Int]) =>
       val appended = xs.append(ys).append(zs)
       appended.isEmpty || hasSubsequence(appended, xs) && hasSubsequence(appended, ys) && hasSubsequence(appended, zs)
+    }
+  } ^ "scanRight" ! check {
+    Prop.forAll { (xs: Stream[Int]) =>
+      scanRight(xs)(0)(_ + _).toList == xs.toList.tails.map(_.sum).toList
     }
   }
 }
