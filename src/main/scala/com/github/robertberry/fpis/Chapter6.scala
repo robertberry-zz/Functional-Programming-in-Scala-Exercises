@@ -117,5 +117,52 @@ object Chapter6 {
       }
 
     def ints(count: Int): Rand[List[Int]] = sequence(List.fill(count)(int))
+
+    /** Exercise 8
+      *
+      * Implement flatMap, then use it to implement positiveLessThan
+      */
+    def flatMap[A, B](f: Rand[A])(g: A => Rand[B]): Rand[B] = {
+      rng => {
+        val (a, rng2) = f(rng)
+        g(a)(rng2)
+      }
+    }
+
+    def positiveLessThan(n: Int): Rand[Int] =
+      flatMap(positiveInt) { i =>
+        val mod = i % n
+        if (i + (n - 1) - mod > 0) unit(mod) else positiveLessThan(n)
+      }
+
+    /** Exercise 9
+      *
+      * Reimplement map and map2 in terms of flatMap
+      */
+    def map_[A, B](s: Rand[A])(f: A => B): Rand[B] = flatMap(s)(f andThen unit)
+    def map2_[A, B, C](ra: Rand[A], rb: Rand[B])(f: (A, B) => C): Rand[C] = flatMap(ra)(a => map(rb)(b => f(a, b)))
+  }
+
+  /** Exercise 10
+    *
+    * Generalize unit, map, map2, flatMap, and sequence to State.
+    */
+  case class State[S, +A](run: S => (A, S)) {
+    def flatMap[AA >: A, B](f: AA => State[S, B]): State[S, B] = State({ s: S =>
+      val (a, s2) = run(s)
+      f(a).run(s2)
+    })
+
+    def map[AA >: A, B](f: AA => B): State[S, B] = flatMap(f andThen State.unit[S, B])
+    def map2[AA >: A, B, C](rb: State[S, B])(f: (AA, B) => C): State[S, C] = flatMap(a => rb.map(b => f(a, b)))
+  }
+
+  object State {
+    def unit[S, A](a: A): State[S, A] = State(s => (a, s))
+
+    def sequence[S, A](xs: List[State[S, A]]): State[S, List[A]] = xs match {
+      case Nil => unit(Nil)
+      case h :: t => h.flatMap(x => sequence(t).map(acc => x :: acc))
+    }
   }
 }

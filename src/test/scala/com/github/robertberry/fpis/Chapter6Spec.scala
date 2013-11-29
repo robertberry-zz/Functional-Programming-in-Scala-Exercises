@@ -57,5 +57,12 @@ class Chapter6Spec extends Specification with ScalaCheck with ArbitraryRNG {
         Rand.ints(i)(rng) == ints(i)(rng)
       }
     }
+  } ^ "positiveLessThan" ! check {
+    Prop.forAll { (rng: Simple) =>
+      Prop.forAll(Gen.chooseNum(1, Int.MaxValue)) { n: Int =>
+        val (randomNumber, _) = Rand.positiveLessThan(n)(rng)
+        randomNumber < n
+      }
+    }
   }
 }
