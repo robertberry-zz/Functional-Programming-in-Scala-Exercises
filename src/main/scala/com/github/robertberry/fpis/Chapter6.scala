@@ -154,7 +154,7 @@ object Chapter6 {
     })
 
     def map[AA >: A, B](f: AA => B): State[S, B] = flatMap(f andThen State.unit[S, B])
-    def map2[AA >: A, B, C](rb: State[S, B])(f: (AA, B) => C): State[S, C] = flatMap(a => rb.map(b => f(a, b)))
+    def map2[AA >: A, B, C](rb: State[S, B])(f: (AA, B) => C): State[S, C] = flatMap((a: A) => rb.map((b: B) => f(a, b)))
   }
 
   object State {
@@ -162,7 +162,7 @@ object Chapter6 {
 
     def sequence[S, A](xs: List[State[S, A]]): State[S, List[A]] = xs match {
       case Nil => unit(Nil)
-      case h :: t => h.flatMap(x => sequence(t).map(acc => x :: acc))
+      case h :: t => h.flatMap((x: A) => sequence(t).map((acc: List[A]) => x :: acc))
     }
   }
 }
