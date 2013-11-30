@@ -164,5 +164,42 @@ object Chapter6 {
       case Nil => unit(Nil)
       case h :: t => h.flatMap((x: A) => sequence(t).map((acc: List[A]) => x :: acc))
     }
+
+    def get[S]: State[S, S] = State(s => (s, s))
+
+    def set[S](s: S): State[S, Unit] = State(_ => ((), s))
+  }
+
+  /** Exercise 11
+    *
+    * Implement a finite state automaton that models a simple candy dispenser.
+    *
+    * You can enter a coin or turn a knob to dispense candy. It can be in one of two states, locked or unlocked. It
+    * also tracks how many candies are left and how many coins it contains.
+    *
+    * Return a tuple of the number of coins and candies left at the end.
+    */
+  sealed trait Input
+  case object Coin extends Input
+  case object Turn extends Input
+
+  case class Machine(locked: Boolean, candies: Int, coins: Int)
+
+  def simulateMachine(inputs: List[Input]): State[Machine, (Int, Int)] = {
+    import State._
+
+    def advance(m: Machine, input: Input) = m match {
+      case m @ Machine(locked, candies, coins) => input match {
+        case Coin => set(Machine(locked = candies < 1, candies, coins + 1))
+        case Turn => if (!locked) set(Machine(locked = true, Math.max(0, candies - 1), coins)) else set(m)
+      }
+    }
+
+    def coinsAndCandies(m: Machine) = m match {
+      case Machine(_, candies, coins) => (coins, candies)
+    }
+
+    sequence(inputs.map(input => get.flatMap((m: Machine) => advance(m, input))))
+      .flatMap((_: List[Unit]) => get.map(coinsAndCandies))
   }
 }
