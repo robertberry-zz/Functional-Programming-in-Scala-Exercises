@@ -26,6 +26,12 @@ object Chapter7 {
       def get(timeout: Long, unit: TimeUnit): A = get
     }
 
+    def map[A, B](a: Par[A])(f: A => B): Par[B] = { (es: ExecutorService) =>
+      val af = a(es)
+
+      UnitFuture(f(af.get))
+    }
+
     def map2[A, B, C](a: Par[A], b: Par[B])(f: (A, B) => C): Par[C] = { (es: ExecutorService) =>
       val af = a(es)
       val bf = b(es)
@@ -168,7 +174,48 @@ object Chapter7 {
       }
     }
 
+    /** Exercise 10
+      *
+      * Our non-blocking representation does not currently handle errors at all. How can you change the representation
+      * to do so?
+      *
+      * See scala.concurrent.Future or scalaz Task ...
+      *
+      * The Future basically needs to wrap over a Try or an Either. Then, wrap the run of the Future in a try catch,
+      * and if an exception is thrown propagate the Left or Failure result instead.
+      */
 
+    /** Exercise 11
+      *
+      * Implement choiceN and then choice in terms of it
+      */
+    def choiceN[A](n: Par[Int])(choices: List[Par[A]]): Par[A] = es => choices(run(es)(n))(es)
+
+    def choice[A](cond: Par[Boolean])(t: Par[A], f: Par[A]): Par[A] = choiceN(map(cond) { if (_) 1 else 0 })(List(t, f))
+
+    /** Exercise 12
+      *
+      * Implement choiceMap
+      */
+    def choiceMap[K,V](key: Par[K])(choices: Map[K,Par[V]]): Par[V] = es => choices(run(es)(key))(es)
+
+    /** Exercise 13
+      *
+      * Implement chooser, then re-implement choice, choiceN and choiceMap in terms of it
+      */
+    def chooser[A,B](pa: Par[A])(choices: A => Par[B]): Par[B] = { es => choices(run(es)(pa))(es) }
+
+    def choiceN2[A](n: Par[Int])(choices: List[Par[A]]): Par[A] = chooser(n)(choices)
+    def choice2[A](cond: Par[Boolean])(t: Par[A], f: Par[A]): Par[A] = chooser(cond) { if (_) t else f }
+    def choiceMap2[K,V](key: Par[K])(choices: Map[K,Par[V]]): Par[V] = chooser(key)(choices)
+
+    /** Exercise 14
+      *
+      * Implement join. Implement flatMap in terms of join. Implement join in terms of flatMap.
+      */
+    def join[A](a: Par[Par[A]]): Par[A] = { es => run(es)(a)(es) }
+    def flatMap[A, B](a: Par[A])(f: A => Par[B]) = join(map(a)(f))
+    def join2[A](a: Par[Par[A]]): Par[A] = flatMap(a)(identity)
   }
 }
 
