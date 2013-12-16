@@ -51,7 +51,7 @@ object Chapter7 {
       *
       * Fix the implementation of map2 so as to respect timeouts
       */
-    def map2[A, B, C](a: Par[A], b: Par[B])(f: (A, B) => C): Par[C] = { (es: ExecutorService) =>
+    def map2b[A, B, C](a: Par[A], b: Par[B])(f: (A, B) => C): Par[C] = { (es: ExecutorService) =>
       val af = a(es)
       val bf = b(es)
 
