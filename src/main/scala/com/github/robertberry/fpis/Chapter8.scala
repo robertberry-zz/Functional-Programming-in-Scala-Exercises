@@ -56,20 +56,20 @@ object Chapter8 {
 
     def listOfN[A](n: Int, g: Gen[A]): Gen[List[A]] = Gen(State(Rand.sequence(List.fill(n)(g.sample.run))))
 
-    def sameParity(from: Int, to: Int): Gen[(Int, Int)] = choose(from, to) flatMap { a =>
+    def sameParity(from: Int, to: Int): Gen[(Int, Int)] = choose(from, to) flatMap { a: Int =>
       val lower = if (a >= 0) Math.max(0, from) else from
       val higher = if (a < 0) Math.min(0, to) else to
-      choose(lower, higher) map { b => (a, b) }
+      choose(lower, higher) map { b: Int => (a, b) }
     }
 
-    def listOfN2[A](size: Gen[Int], g: Gen[A]): Gen[List[A]] = size flatMap { n => listOfN(n, g) }
+    def listOfN2[A](size: Gen[Int], g: Gen[A]): Gen[List[A]] = size flatMap { n: Int => listOfN(n, g) }
 
     /** Exercise 7
       *
       * Implement union, for combining two generators of the same type into one, by pulling values from each generator
       * with equal likelihood
       */
-    def union[A](g1: Gen[A], g2: Gen[A]): Gen[A] = boolean flatMap { if (_) g1 else g2 }
+    def union[A](g1: Gen[A], g2: Gen[A]): Gen[A] = boolean flatMap { if (_: Boolean) g1 else g2 }
 
     /** Exercise 8
       *
@@ -80,7 +80,7 @@ object Chapter8 {
       *
       *     It's expected that both of the weights are positive integers.
       */
-    def weighted[A](g1: (Gen[A], Int), g2: (Gen[A], Int)): Gen[A] = choose(0, g1._2 + g2._2) flatMap { w =>
+    def weighted[A](g1: (Gen[A], Int), g2: (Gen[A], Int)): Gen[A] = choose(0, g1._2 + g2._2) flatMap { w: Int =>
       if (w < g1._2) g1._1 else g2._1
     }
   }
@@ -89,37 +89,74 @@ object Chapter8 {
     *
     * Implement flatMap, then sameParity and a more dynamic listOfN in terms of it
     */
-  case class Gen[A](sample: State[RNG, A]) {
-    def flatMap[B](f: A => Gen[B]): Gen[B] = {
+  case class Gen[+A](sample: State[RNG, A]) {
+    def flatMap[AA >: A, B](f: AA => Gen[B]): Gen[B] = {
       Gen(State(Rand.flatMap(sample.run)(f.andThen(_.sample.run))))
     }
 
-    def map[B](f: A => B): Gen[B] = flatMap[B](f.andThen(Gen.unit[B]))
+    def map[AA >: A, B](f: AA => B): Gen[B] = flatMap[AA, B](f.andThen(Gen.unit[B]))
+
+    /** Exercise 10
+      *
+      * Implement helper functions for converting Gen to SGen
+      */
+    def unsized: SGen[A] = SGen(const(this))
+  }
+
+  object Ex9 {
+    object Prop {
+      type FailedCase = String
+      type SuccessCount = Int
+      type TestCases = Int
+      type Result = Option[(FailedCase, SuccessCount)]
+    }
+
+    /** Exercise 9
+      *
+      * Implement && and || for manipulating Prop values
+      */
+    case class Prop(run: (Prop.TestCases, RNG) => Prop.Result) {
+      def &&(p2: Prop) = Prop { (testCases, rng) =>
+        val r1 = run(testCases, rng)
+        r1 orElse p2.run(testCases, rng)
+      }
+
+      def ||(p2: Prop) = Prop { (testCases, rng) =>
+        val r1 = run(testCases, rng)
+
+        r1 flatMap { _ => p2.run(testCases, rng) }
+      }
+    }
+  }
+
+  /** Exercise 11
+    *
+    * Implement the same convenience functions on SGen as Gen
+    */
+  case class SGen[+A](forSize: Int => Gen[A]) {
+    def flatMap[AA >: A, B](f: AA => SGen[B]): SGen[B] = SGen { i: Int =>
+      forSize(i) flatMap { gen: A => f(gen).forSize(i) }
+    }
+
+    def map[AA >: A, B](f: AA => B): SGen[B] = SGen { i: Int => forSize(i).map(f) }
+  }
+
+  /** Exercise 12
+    *
+    * Implement a listOf combinator that does not accept an explicit size
+    */
+  object SGen {
+    def listOf[A](g: Gen[A]): SGen[List[A]] = SGen { i: Int => Gen.listOfN(i, g) }
   }
 
   object Prop {
+    type MaxSize = Int
+    type TestCases = Int
     type FailedCase = String
     type SuccessCount = Int
-    type TestCases = Int
     type Result = Option[(FailedCase, SuccessCount)]
   }
 
-  /** Exercise 9
-    *
-    * Implement && and || for manipulating Prop values
-    */
-  case class Prop(run: (Prop.TestCases, RNG) => Prop.Result) {
-    def &&(p2: Prop) = Prop { (testCases, rng) =>
-      val r1 = run(testCases, rng)
-      r1 orElse p2.run(testCases, rng)
-    }
-
-    def ||(p2: Prop) = Prop { (testCases, rng) =>
-      val r1 = run(testCases, rng)
-
-      r1 flatMap { _ => p2.run(testCases, rng) }
-    }
-  }
-
+  case class Prop(run: (Prop.MaxSize, Prop.TestCases, RNG) => Prop.Result)
 
 }

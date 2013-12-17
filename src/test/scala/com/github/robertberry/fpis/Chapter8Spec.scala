@@ -22,8 +22,8 @@ class Chapter8Spec extends Specification with ScalaCheck with Ex3Prop with Arbit
   val g1 = Chapter8.Gen.choose(-20, -10)
   val g2 = Chapter8.Gen.choose(10, 20)
 
-  val passProp = Chapter8.Prop { (_, _) => None }
-  val failProp = Chapter8.Prop { (_, _) => Some(("Failed", 0)) }
+  val passProp = Chapter8.Ex9.Prop { (_, _) => None }
+  val failProp = Chapter8.Ex9.Prop { (_, _) => Some(("Failed", 0)) }
 
   def is: Fragments = "&&" ! prop { (prop1: Ex3.Prop, prop2: Ex3.Prop) =>
     (prop1.check && prop2.check) == (prop1 && prop2).check
@@ -68,5 +68,9 @@ class Chapter8Spec extends Specification with ScalaCheck with Ex3Prop with Arbit
       (passProp || failProp).run(1, rng).isEmpty &&
       (failProp || passProp).run(1, rng).isEmpty &&
       (failProp || failProp).run(1, rng).isDefined
+  } ^ "SGen listOf" ! prop { rng: Simple =>
+    Prop.forAll(Gen.choose(1, 30)) { n: Int =>
+      SGen.listOf(Chapter8.Gen.boolean).forSize(n).sample.run(rng)._1.length == n
+    }
   }
 }
