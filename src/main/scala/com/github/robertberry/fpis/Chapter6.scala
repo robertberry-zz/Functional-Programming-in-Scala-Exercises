@@ -130,7 +130,9 @@ object Chapter6 {
     }
 
     def positiveLessThan(n: Int): Rand[Int] =
-      flatMap(positiveInt) { i =>
+      if (n <= 0) {
+        throw new IllegalArgumentException(s"positiveLessThan must be called with positive integers, not $n")
+      } else flatMap(positiveInt) { i =>
         val mod = i % n
         if (i + (n - 1) - mod > 0) unit(mod) else positiveLessThan(n)
       }
