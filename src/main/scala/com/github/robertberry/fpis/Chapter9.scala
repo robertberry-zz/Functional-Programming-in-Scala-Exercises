@@ -24,8 +24,6 @@ object Chapter9 {
       def **[B](p2: Parser[B]): Parser[(A, B)] = self.product(p, p2)
     }
 
-    def map[A, B](a: Parser[A])(f: A => B): Parser[B]
-
     def char(c: Char): Parser[Char] =
       string(c.toString) map (_.charAt(0))
 
@@ -86,6 +84,18 @@ object Chapter9 {
       *
       * Implement product and map2 in terms of flatMap
       */
+    def product_2[A, B](p: Parser[A], p2: Parser[B]): Parser[(A, B)] = p flatMap { a => p2.map(a ->) }
+
+    def map2_2[A, B, C](p: Parser[A], p2: Parser[B])(f: (A, B) => C): Parser[C] = p flatMap { a =>
+      p2 map { b => f(a, b) }
+    }
+
+    /** Exercise 8
+      *
+      * Implement map in terms of flatMap and other combinators
+      */
+    def map[A, B](a: Parser[A])(f: A => B): Parser[B] = a.flatMap(succeed[B] compose f)
+
 
   }
 }
