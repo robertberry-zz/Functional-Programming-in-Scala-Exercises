@@ -119,7 +119,7 @@ object Chapter9 {
     def errorLocation(e: ParseError): Location
     def errorMessage(e: ParseError): String
     def scope[A](msg: String)(p: Parser[A]): Parser[A]
-
+    def label[A](msg: String)(p: Parser[A]): Parser[A]
   }
 
   /** Exercise 9
@@ -177,5 +177,82 @@ object Chapter9 {
     lazy val jValue: Parser[JSON] = jNull | jBool | jString | jObject | jNumber | jArray
 
     jValue
+  }
+
+  /** Exercise 12
+    *
+    * Come up with a representation for a Parser and implement it
+    */
+  case class MyParser[+A](run: String => Either[ParseError, (A, String, String)])
+
+  implicit class RichString(s: String) {
+    def indexWhereDivergesFrom(s2: String) = s.zip(s2) indexOf { case (x, y) => x != y }
+  }
+
+  object MyParsers extends Parsers[MyParser] {
+    def run[A](p: MyParser[A])(input: String): Either[ParseError, A] = p.run(input) match {
+      case Right((a, _, "")) => Right(a)
+      case Right((_, consumed, remaining)) => Left(
+        ParseError(List((Location(consumed + remaining, consumed.length),
+          s"Finished parsing before end of string: '$remaining'")
+        )))
+      case Left(errors) => Left(errors)
+    }
+
+    def or[A](s1: MyParser[A], s2: MyParser[A]): MyParser[A] = {
+      MyParser { s =>
+        s1.run(s) match {
+          case Left(error) => s2.run(s)
+          case Right(a) => Right(a)
+        }
+      }
+    }
+
+    implicit def string(s: String): MyParser[String] = MyParser { in =>
+      val s2 = in.take(s.length)
+
+      if (s == s2) Right((s2, s2, in.drop(s.length)))
+      else Left(ParseError(List((Location(s2, s2.indexWhereDivergesFrom(s)), s"$in is not equal to $s"))))
+    }
+
+    def slice[A](p: MyParser[A]): MyParser[String] = MyParser { in =>
+      p.run(in).right map { case (_, consumed, remaining) => (consumed, consumed, remaining) }
+    }
+
+    def product[A, B](p: MyParser[A], p2: MyParser[B]): MyParser[(A, B)] = MyParser { in =>
+      p.run(in).right flatMap { case (a, aConsumed, aRemaining) =>
+        p2.run(aRemaining).right map { case (b, bConsumed, bRemaining) => ((a, b), aConsumed + bConsumed, bRemaining) }
+      }
+    }
+
+    def flatMap[A, B](p: MyParser[A])(f: (A) => MyParser[B]): MyParser[B] = MyParser { in =>
+      p.run(in).right flatMap { case (a, aConsumed, aRemaining) =>
+        f(a).run(aRemaining).right map { case (b, bConsumed, bRemaining) => (b, aConsumed + bConsumed, bRemaining) }
+      }
+    }
+
+    implicit def regex(r: Regex): MyParser[String] = MyParser { in =>
+      r.findFirstMatchIn(in) match {
+        case Some(m) if m.start == 0 => Right((m.matched, in.take(m.end), in.drop(m.end)))
+
+        case _ => Left(ParseError(List((Location(in, 0), s"Regular expression '$r' did not match $in"))))
+      }
+    }
+
+    def errorLocation(e: ParseError): Location = e.stack.head._1
+
+    def errorMessage(e: ParseError): String = e.stack.head._2
+
+    def scope[A](msg: String)(p: MyParser[A]): MyParser[A] = MyParser { in =>
+      p.run(in).left map {
+        case ParseError(stack) => ParseError((Location(in, 0), msg) :: stack)
+      }
+    }
+
+    def label[A](msg: String)(p: MyParser[A]): MyParser[A] = MyParser { in =>
+      p.run(in).left map {
+        case ParseError((location, _) :: rest) => ParseError((location, msg) :: rest)
+      }
+    }
   }
 }
