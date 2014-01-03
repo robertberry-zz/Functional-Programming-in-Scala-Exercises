@@ -3,7 +3,16 @@ package com.github.robertberry.fpis
 import scala.util.matching.Regex
 
 object Chapter9 {
-  trait Parsers[ParseError, Parser[+_]] { self =>
+  case class Location(input: String, offset: Int = 0) {
+    lazy val line = input.slice(0,offset+1).count(_ == '\n') + 1
+    lazy val col = input.slice(0,offset+1).reverse.indexOf('\n')
+  }
+
+  case class ParseError(stack: List[(Location, String)])
+
+  trait Parsers[Parser[+_]] { self =>
+    def run[A](p: Parser[A])(input: String): Either[ParseError, A]
+
     def or[A](s1: Parser[A], s2: Parser[A]): Parser[A]
 
     implicit def string(s: String): Parser[String]
@@ -105,6 +114,12 @@ object Chapter9 {
       * Implement map in terms of flatMap and other combinators
       */
     def map[A, B](a: Parser[A])(f: A => B): Parser[B] = a.flatMap((succeed[B] _) compose f)
+
+
+    def errorLocation(e: ParseError): Location
+    def errorMessage(e: ParseError): String
+    def scope[A](msg: String)(p: Parser[A]): Parser[A]
+
   }
 
   /** Exercise 9
@@ -122,7 +137,7 @@ object Chapter9 {
     case class JObject(get: Map[String, JSON]) extends JSON
   }
 
-  def jsonParser[Err, Parser[+_]](P: Parsers[Err, Parser]): Parser[JSON] = {
+  def jsonParser[Parser[+_]](P: Parsers[Parser]): Parser[JSON] = {
     import P._
     import JSON._
 
