@@ -6,9 +6,24 @@ object Chapter9 {
   case class Location(input: String, offset: Int = 0) {
     lazy val line = input.slice(0,offset+1).count(_ == '\n') + 1
     lazy val col = input.slice(0,offset+1).reverse.indexOf('\n')
+
+    def advanceBy(n: Int): Location =
+      copy(offset = offset+n)
   }
 
-  case class ParseError(stack: List[(Location, String)])
+  case class ParseError(stack: List[(Location, String)]) {
+    def push(location: Location, message: String) = copy(stack = (location, message) :: stack)
+
+    def latestLoc: Option[Location] =
+      latest map (_._1)
+
+    def latest: Option[(Location,String)] =
+      stack.lastOption
+
+    def label(s: String): ParseError = {
+      ParseError(latestLoc.map((_,s)).toList)
+    }
+  }
 
   trait Parsers[Parser[+_]] { self =>
     def run[A](p: Parser[A])(input: String): Either[ParseError, A]
@@ -186,7 +201,7 @@ object Chapter9 {
   case class MyParser[+A](run: String => Either[ParseError, (A, String, String)])
 
   implicit class RichString(s: String) {
-    def indexWhereDivergesFrom(s2: String) = s.zip(s2) indexOf { case (x, y) => x != y }
+    def indexWhereDivergesFrom(s2: String) = s.zip(s2) indexOf { (x: String, y: String) => x != y }
   }
 
   object MyParsers extends Parsers[MyParser] {
@@ -254,5 +269,93 @@ object Chapter9 {
         case ParseError((location, _) :: rest) => ParseError((location, msg) :: rest)
       }
     }
+  }
+
+  /** Exercise 13
+    *
+    * Implement Parsers for the Parser representation given
+    */
+  type Parser[+A] = Location => Result[A]
+
+  trait Result[+A] {
+    def mapError(f: ParseError => ParseError) = this match {
+      case Failure(err, c) => Failure(f(err), c)
+      case _ => this
+    }
+
+    def uncommit: Result[A] = this match {
+      case Failure(e,true) => Failure(e,false)
+      case _ => this
+    }
+
+    def addCommit(isCommitted: Boolean): Result[A] = this match {
+      case Failure(e,false) if isCommitted => Failure(e, true)
+      case _ => this
+    }
+  }
+
+  case class Success[+A](get: A, charsConsumed: Int) extends Result[A]
+  case class Failure(get: ParseError, isCommitted: Boolean) extends Result[Nothing]
+
+  object Parsers extends Parsers[Parser] {
+    def run[A](p: (Location) => Result[A])(input: String): Either[ParseError, A] = ???
+
+    def or[A](x: (Location) => Result[A], y: (Location) => Result[A]): (Location) => Result[A] =
+      s => x(s) match {
+        case r@Failure(e,committed) if committed => y(s)
+        case r => r }
+
+    implicit def string(s: String): (Location) => Result[String] = { case Location(in, start) =>
+      val s2 = in.substring(start, start + s.length)
+
+      if (s == s2) {
+        Success(s2, s2.length)
+      } else {
+        Failure(ParseError(List((Location(in, start + s2.indexWhereDivergesFrom(s)), s"$s did not equal $s2"))), false)
+      }
+    }
+
+    def slice[A](p: (Location) => Result[A]): (Location) => Result[String] = { case location @ Location(in, start) =>
+      p(location) match {
+        case Success(a, charsConsumed) => Success(in.substring(start, start + charsConsumed), charsConsumed)
+        case failure: Failure => failure
+      }
+    }
+
+    def product[A, B](p: (Location) => Result[A], p2: (Location) => Result[B]): (Location) => Result[(A, B)] = ???
+
+    def flatMap[A, B](p: (Location) => Result[A])(f: (A) => (Location) => Result[B]): (Location) => Result[B] = {
+      case loc @ Location(in, start) => {
+        p(loc) match {
+          case Success(a, aCharsConsumed) => f(a)(Location(in, start + aCharsConsumed)) match {
+            case Success(b, bCharsConsumed) => Success(b, aCharsConsumed + bCharsConsumed)
+            case fail: Failure => fail
+          }
+          case fail: Failure => fail
+        }
+      }
+    }
+
+    implicit def regex(r: Regex): (Location) => Result[String] = { case loc @ Location(in, start) =>
+      r.findFirstMatchIn(in.drop(start)) match {
+        case Some(m) if m.start == 0 => Success(m.matched, m.matched.length)
+        case _ => Failure(ParseError(List((loc, s"Did not match $r"))), false)
+      }
+    }
+
+    def errorLocation(e: ParseError): Location = ???
+
+    def errorMessage(e: ParseError): String = ???
+
+    def scope[A](msg: String)(p: (Location) => Result[A]): (Location) => Result[A] = { location =>
+      p(location).mapError(_.push(location, msg))
+    }
+
+    def label[A](msg: String)(p: (Location) => Result[A]): (Location) => Result[A] = { location =>
+      p(location).mapError(_.label(msg))
+    }
+
+    def attempt[A](p: Parser[A]): Parser[A] =
+      s => p(s).uncommit
   }
 }
