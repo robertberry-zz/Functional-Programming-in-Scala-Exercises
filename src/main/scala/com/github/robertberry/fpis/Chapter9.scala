@@ -189,7 +189,7 @@ object Chapter9 {
 
     lazy val jArray = (char('[') >> (jValue.padded interspersedWith comma) << char(']')).map(JArray.apply)
 
-    lazy val jValue: Parser[JSON] = jNull | jBool | jString | jObject | jNumber | jArray
+    lazy val jValue: Parser[JSON] = jNull | jBool | jString | jNumber | jArray | jObject
 
     jValue
   }
@@ -298,6 +298,18 @@ object Chapter9 {
   case class Failure(get: ParseError, isCommitted: Boolean) extends Result[Nothing]
 
   object Parsers extends Parsers[Parser] {
+    /** This to stop the stack overflow problem with the above definition */
+    override def many[A](parser: Parser[A]): Parser[List[A]] = { case location @ Location(in, start) =>
+      @annotation.tailrec def iter(charsConsumed: Int, accumulator: List[A]): Result[List[A]] = {
+        parser(location) match {
+          case Success(a, consumed) => iter(charsConsumed + consumed, a :: accumulator)
+          case Failure(_, _) => Success(accumulator.reverse, charsConsumed)
+        }
+      }
+
+      iter(0, Nil)
+    }
+
     def run[A](p: (Location) => Result[A])(input: String): Either[ParseError, A] = p(Location(input, 0)) match {
       case Failure(error, _) => Left(error)
       case Success(_, charsConsumed) if charsConsumed < input.length =>
