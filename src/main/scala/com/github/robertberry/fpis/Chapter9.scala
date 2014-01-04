@@ -298,7 +298,12 @@ object Chapter9 {
   case class Failure(get: ParseError, isCommitted: Boolean) extends Result[Nothing]
 
   object Parsers extends Parsers[Parser] {
-    def run[A](p: (Location) => Result[A])(input: String): Either[ParseError, A] = ???
+    def run[A](p: (Location) => Result[A])(input: String): Either[ParseError, A] = p(Location(input, 0)) match {
+      case Failure(error, _) => Left(error)
+      case Success(_, charsConsumed) if charsConsumed < input.length =>
+        Left(ParseError(List((Location(input, charsConsumed), s"Did not consume ${input.drop(charsConsumed)}"))))
+      case Success(a, _) => Right(a)
+    }
 
     def or[A](x: (Location) => Result[A], y: (Location) => Result[A]): (Location) => Result[A] =
       s => x(s) match {
@@ -322,19 +327,14 @@ object Chapter9 {
       }
     }
 
-    def product[A, B](p: (Location) => Result[A], p2: (Location) => Result[B]): (Location) => Result[(A, B)] = ???
+    def product[A, B](p: (Location) => Result[A], p2: (Location) => Result[B]): (Location) => Result[(A, B)] =
+      p flatMap { a => p2.map(a ->) }
 
-    def flatMap[A, B](p: (Location) => Result[A])(f: (A) => (Location) => Result[B]): (Location) => Result[B] = {
-      case loc @ Location(in, start) => {
-        p(loc) match {
-          case Success(a, aCharsConsumed) => f(a)(Location(in, start + aCharsConsumed)) match {
-            case Success(b, bCharsConsumed) => Success(b, aCharsConsumed + bCharsConsumed)
-            case fail: Failure => fail
-          }
-          case fail: Failure => fail
-        }
+    def flatMap[A,B](f: Parser[A])(g: A => Parser[B]): Parser[B] =
+      s => f(s) match {
+        case Success(a,n) => g(a)(s.advanceBy(n)).addCommit(n == 0)
+        case e@Failure(_,_) => e
       }
-    }
 
     implicit def regex(r: Regex): (Location) => Result[String] = { case loc @ Location(in, start) =>
       r.findFirstMatchIn(in.drop(start)) match {
@@ -343,9 +343,9 @@ object Chapter9 {
       }
     }
 
-    def errorLocation(e: ParseError): Location = ???
+    def errorLocation(e: ParseError): Location = e.latestLoc.get
 
-    def errorMessage(e: ParseError): String = ???
+    def errorMessage(e: ParseError): String = e.latest.get._2
 
     def scope[A](msg: String)(p: (Location) => Result[A]): (Location) => Result[A] = { location =>
       p(location).mapError(_.push(location, msg))

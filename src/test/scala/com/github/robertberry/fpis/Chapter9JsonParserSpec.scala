@@ -5,8 +5,8 @@ import Chapter9._
 
 class Chapter9JsonParserSpec extends Specification with ScalaCheck {
   def is = "parse a number" ! prop { (n: Double) =>
-    val parser = jsonParser(MyParsers)
+    val parser = jsonParser(Parsers)
 
-    MyParsers.run(parser)(n.toString) == Right(JSON.JNumber(n))
+    Parsers.run(parser)(n.toString) == Right(JSON.JNumber(n))
   }
 }
