@@ -156,11 +156,8 @@ object Chapter9 {
     import P._
     import JSON._
 
-    /** TODO: UGLY! Clean me up :-( */
     def manyInterspersed[A, B](parser: Parser[A], separator: Parser[B]): Parser[List[A]] = {
-      (parser flatMap { a: A =>
-        ((separator >> parser).many map { as: List[A] => a :: as }) | succeed(List(a))
-      }) | succeed(Nil)
+      (parser flatMap { a: A => (separator >> parser).many map { as: List[A] => a :: as } }) | succeed(Nil)
     }
 
     val spaces = char(' ').many.slice
@@ -185,11 +182,11 @@ object Chapter9 {
 
     lazy val jObject = (char('{') >> (keyValue interspersedWith comma) << char('}')) map { pairs => JObject(pairs.toMap) }
 
-    lazy val jNumber = "\\d+(\\.\\d+)?".r map { n: String => JNumber(n.toDouble) }
+    lazy val jNumber = "-?\\d+(\\.\\d+)?(E\\d+)?".r map { n: String => JNumber(n.toDouble) }
 
     lazy val jArray = (char('[') >> (jValue.padded interspersedWith comma) << char(']')).map(JArray.apply)
 
-    lazy val jValue: Parser[JSON] = jNull | jBool | jString | jNumber | jArray | jObject
+    lazy val jValue: Parser[JSON] = jNull | jBool | jString | jNumber // | jArray | jObject
 
     jValue
   }
@@ -199,10 +196,6 @@ object Chapter9 {
     * Come up with a representation for a Parser and implement it
     */
   case class MyParser[+A](run: String => Either[ParseError, (A, String, String)])
-
-  implicit class RichString(s: String) {
-    def indexWhereDivergesFrom(s2: String) = s.zip(s2) indexOf { (x: String, y: String) => x != y }
-  }
 
   object MyParsers extends Parsers[MyParser] {
     def run[A](p: MyParser[A])(input: String): Either[ParseError, A] = p.run(input) match {
@@ -227,7 +220,7 @@ object Chapter9 {
       val s2 = in.take(s.length)
 
       if (s == s2) Right((s2, s2, in.drop(s.length)))
-      else Left(ParseError(List((Location(s2, s2.indexWhereDivergesFrom(s)), s"$in is not equal to $s"))))
+      else Left(ParseError(List((Location(s2, 0), s"$in is not equal to $s"))))
     }
 
     def slice[A](p: MyParser[A]): MyParser[String] = MyParser { in =>
@@ -310,6 +303,14 @@ object Chapter9 {
       iter(0, Nil)
     }
 
+    /** This too */
+    override def map[A, B](a: Parser[A])(f: A => B): Parser[B] = { location =>
+      a(location) match {
+        case Success(a, consumed) => Success(f(a), consumed)
+        case x: Failure => x
+      }
+    }
+
     def run[A](p: (Location) => Result[A])(input: String): Either[ParseError, A] = p(Location(input, 0)) match {
       case Failure(error, _) => Left(error)
       case Success(_, charsConsumed) if charsConsumed < input.length =>
@@ -319,16 +320,16 @@ object Chapter9 {
 
     def or[A](x: (Location) => Result[A], y: (Location) => Result[A]): (Location) => Result[A] =
       s => x(s) match {
-        case r@Failure(e,committed) if committed => y(s)
+        case r@Failure(e,committed) if !committed => y(s)
         case r => r }
 
     implicit def string(s: String): (Location) => Result[String] = { case Location(in, start) =>
-      val s2 = in.substring(start, start + s.length)
+      val s2 = in.substring(start, start + (s.length min (in.length - start)))
 
       if (s == s2) {
         Success(s2, s2.length)
       } else {
-        Failure(ParseError(List((Location(in, start + s2.indexWhereDivergesFrom(s)), s"$s did not equal $s2"))), false)
+        Failure(ParseError(List((Location(in, start), s"$s did not equal $s2"))), false)
       }
     }
 
