@@ -5,6 +5,7 @@ import Chapter10._
 import org.scalacheck.Arbitrary
 import org.scalacheck.Prop.forAll
 import org.scalacheck.Gen
+import org.scalacheck.Arbitrary.arbitrary
 
 object Chapter10Spec {
   val arbitraryIntEndofunction = Arbitrary {
@@ -16,6 +17,14 @@ object Chapter10Spec {
 
     Gen.oneOf(increment _, decrement _, square _, invert _)
   }
+
+  val intRangeGen = for {
+      i <- arbitrary[Int]
+      j <- arbitrary[Int]
+      ordering <- if (i == j) Gen.const(Level) else Gen.oneOf(Ascending, Descending, Variadic)
+    } yield IntRange(i min j, i max j, ordering)
+
+  implicit val arbitraryRange: Arbitrary[Range] = Arbitrary { Gen.oneOf(intRangeGen, Gen.const(ZeroRange)) }
 
   object Laws {
     def associativity[A](monoid: Monoid[A])(implicit arbitrary: Arbitrary[A]) = forAll { (x: A, y: A, z: A) =>
@@ -40,17 +49,20 @@ class Chapter10Spec extends Specification with ScalaCheck {
     "Trim Monoid obeys laws" ! { Laws.identity(trimMonoid) && Laws.associativity(trimMonoid) } ^
     "Concatenate sums with addition monoid" ! prop { (xs: List[Int]) =>
       xs.isEmpty || concatenate(xs)(intAddition) == xs.sum
-    } ^
-    "Concatenate calculates the product with multiplication monoid" ! prop { xs: List[Int] =>
+    } ^ "Concatenate calculates the product with multiplication monoid" ! prop { xs: List[Int] =>
       xs.isEmpty || concatenate(xs)(intMultiplication) == xs.product
-    } ^
-    "foldMap _.length calculates the total length of a list of strings" ! prop { xs: List[String] =>
+    } ^ "foldMap _.length calculates the total length of a list of strings" ! prop { xs: List[String] =>
       foldMap(xs, intAddition)(_.length) == xs.map(_.length).sum
-    } ^
-    "foldMap foldLeft works as expected" ! prop { xs: List[Int] =>
+    } ^ "foldMap foldLeft works as expected" ! prop { xs: List[Int] =>
       foldLeft(xs)(0)(_ - _) == xs.foldLeft(0)(_ - _)
     } ^ "foldMap foldRight works as expected" ! prop { xs: List[Int] =>
       foldRight(xs)(0)(_ - _) == xs.foldRight(0)(_ - _)
+    } ^ "foldMapV _.length calculates the total length of a list of strings" ! prop { xs: Array[String] =>
+      // This to stop the stack exploding: TODO write a tail recursive version of the function
+      xs.length > 100 || foldMapV(xs, intAddition)(_.length) == xs.map(_.length).sum
+    } ^ "ordered range Monoid obeys laws" ! { Laws.identity(rangeMonoid) && Laws.associativity(rangeMonoid) } ^
+    "foldMapV ordering monoid" ! prop { xs: List[Int] =>
+      xs.length > 100 || isOrdered(xs.toArray) == (xs == xs.sorted || xs == xs.sorted.reverse)
     }
 
 

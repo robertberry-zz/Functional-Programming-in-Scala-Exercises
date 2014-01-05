@@ -108,8 +108,55 @@ object Chapter10 {
   /** Exercise 9
     *
     * Implement a foldMap for IndexedSeq - it should do a balanced fold
-    *
-    * ... TODO!
     */
-}
+  def foldMapV[A, B](as: IndexedSeq[A], m: Monoid[B])(f: A => B): B = {
+    if (as.length == 0) m.zero
+    else if (as.length == 1) m.op(m.zero, f(as(0)))
+    else {
+      val (left, right) = as.splitAt(as.length / 2)
+      m.op(foldMapV(left, m)(f), foldMapV(right, m)(f))
+    }
+  }
 
+  /** Exercise 10
+    *
+    * Use foldMapV to detect whether a given IndexedSeq[Int] is ordered.
+    *
+    * You will need to come up with a creative Monoid.
+    */
+
+  /** This is inelegant, but I couldn't think of a better solution at the time. :-( */
+  sealed trait Order
+  case object Ascending extends Order
+  case object Descending extends Order
+  case object Level extends Order
+  case object Variadic extends Order
+
+  sealed trait Range
+  case object ZeroRange extends Range
+  case class IntRange(low: Int, high: Int, order: Order) extends Range
+
+  val rangeMonoid = new Monoid[Range] {
+    def op(a1: Range, a2: Range): Range = (a1, a2) match {
+      case (ZeroRange, x) => x
+      case (x, ZeroRange) => x
+      case (IntRange(xLow, xHigh, xOrder), IntRange(yLow, yHigh, yOrder)) => IntRange(
+        xLow min yLow,
+        xHigh max yHigh,
+        (xOrder, yOrder) match {
+          case (Level, Level) if xHigh == yLow => Level
+          case (Ascending | Level, Ascending | Level) if xHigh <= yLow => Ascending
+          case (Descending | Level, Descending | Level) if xLow >= yHigh => Descending
+          case otherwise => Variadic
+        }
+      )
+    }
+
+    def zero: Range = ZeroRange
+  }
+
+  def isOrdered(xs: IndexedSeq[Int]) = foldMapV(xs, rangeMonoid)(x => IntRange(x, x, Level)) match {
+    case IntRange(_, _, Variadic) => false
+    case _ => true
+  }
+}

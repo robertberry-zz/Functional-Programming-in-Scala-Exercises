@@ -353,7 +353,9 @@ object Chapter9 {
 
     def flatMap[A,B](f: Parser[A])(g: A => Parser[B]): Parser[B] =
       s => f(s) match {
-        case Success(a, n) => g(a)(s advanceBy n).addCommit(n == 0)
+        case Success(a, n) => {
+          g(a)(s advanceBy n).addCommit(n == 0)
+        }
         case e @ Failure(_, _) => e
       }
 
