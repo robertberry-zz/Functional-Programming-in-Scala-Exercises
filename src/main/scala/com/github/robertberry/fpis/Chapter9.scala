@@ -7,8 +7,9 @@ object Chapter9 {
     lazy val line = input.slice(0,offset+1).count(_ == '\n') + 1
     lazy val col = input.slice(0,offset+1).reverse.indexOf('\n')
 
-    def advanceBy(n: Int): Location =
-      copy(offset = offset+n)
+    def advanceBy(n: Int): Location = {
+      copy(offset = offset + n)
+    }
   }
 
   case class ParseError(stack: List[(Location, String)]) {
@@ -55,9 +56,11 @@ object Chapter9 {
 
       def as[B](b: B) = self.map(p)(const(b))
 
+      def >>=[B](f: A => Parser[B]): Parser[B] = self.flatMap(p)(f)
+
       def >>[B](p2: Parser[B]): Parser[B] = p.flatMap(const(p2))
 
-      def <<[B](p2: Parser[B]): Parser[A] = p flatMap { a: A => p2.map(const(a)) }
+      def <<[B](p2: Parser[B]): Parser[A] = p >>= (a => p2.map(const(a)))
     }
 
     def char(c: Char): Parser[Char] =
@@ -160,7 +163,7 @@ object Chapter9 {
       (parser flatMap { a: A => (separator >> parser).many map { as: List[A] => a :: as } }) | succeed(Nil)
     }
 
-    val spaces = char(' ').many.slice
+    val spaces = char(' ').many
 
     implicit class RichParser[A](parser: Parser[A]) {
       def padded = spaces >> parser << spaces
@@ -170,23 +173,25 @@ object Chapter9 {
 
     val comma = char(',')
 
-    val jNull = "null".as(JNull)
+    val jNull = scope("null")("null".as(JNull))
 
-    val jBool = "true".as(JBool(true)) | "false".as(JBool(false))
+    val jBool = scope("boolean")("true".as(JBool(true)) | "false".as(JBool(false)))
 
-    val quotedString = char('"') >> "([^\"]|\\\")*".r << char('"')
+    lazy val jNumber = "-?\\d+(\\.\\d+)?(E\\d+)?".r map { n: String => JNumber(n.toDouble) }
 
-    val jString = quotedString.map(JString.apply)
+    val quotedString = (char('"') >> "([^\"]|\\\\\")*".r) << char('"')
+
+    val jString = scope("string")(quotedString.map(JString.apply))
 
     lazy val keyValue = (quotedString.padded << char(':').padded) ** jValue.padded
 
     lazy val jObject = (char('{') >> (keyValue interspersedWith comma) << char('}')) map { pairs => JObject(pairs.toMap) }
 
-    lazy val jNumber = "-?\\d+(\\.\\d+)?(E\\d+)?".r map { n: String => JNumber(n.toDouble) }
+    // can't use >> here. In order to prevent a recursive loop o' death, jValue must be referred to only from inside
+    // the function pased to >>=
+    lazy val jArray = ((char('[') >>= { (_: Char) => jValue.padded interspersedWith comma }) << char(']')).map(JArray.apply)
 
-    lazy val jArray = (char('[') >> (jValue.padded interspersedWith comma) << char(']')).map(JArray.apply)
-
-    lazy val jValue: Parser[JSON] = jNull | jBool | jString | jNumber // | jArray | jObject
+    lazy val jValue: Parser[JSON] = jNull | jBool | jNumber | jString | jArray //| jObject
 
     jValue
   }
@@ -282,7 +287,7 @@ object Chapter9 {
     }
 
     def addCommit(isCommitted: Boolean): Result[A] = this match {
-      case Failure(e,false) if isCommitted => Failure(e, true)
+      case Failure(e, false) if isCommitted => Failure(e, true)
       case _ => this
     }
   }
@@ -296,7 +301,7 @@ object Chapter9 {
       @annotation.tailrec def iter(charsConsumed: Int, accumulator: List[A]): Result[List[A]] = {
         parser(location) match {
           case Success(a, consumed) => iter(charsConsumed + consumed, a :: accumulator)
-          case Failure(_, _) => Success(accumulator.reverse, charsConsumed)
+          case Failure(_, _) => Success(accumulator.reverse, start + charsConsumed)
         }
       }
 
@@ -306,28 +311,31 @@ object Chapter9 {
     /** This too */
     override def map[A, B](a: Parser[A])(f: A => B): Parser[B] = { location =>
       a(location) match {
-        case Success(a, consumed) => Success(f(a), consumed)
+        case Success(x, consumed) => Success(f(x), consumed)
         case x: Failure => x
       }
     }
 
     def run[A](p: (Location) => Result[A])(input: String): Either[ParseError, A] = p(Location(input, 0)) match {
       case Failure(error, _) => Left(error)
-      case Success(_, charsConsumed) if charsConsumed < input.length =>
+
+      case Success(a, charsConsumed) if charsConsumed < input.length => {
         Left(ParseError(List((Location(input, charsConsumed), s"Did not consume ${input.drop(charsConsumed)}"))))
+      }
       case Success(a, _) => Right(a)
     }
 
     def or[A](x: (Location) => Result[A], y: (Location) => Result[A]): (Location) => Result[A] =
       s => x(s) match {
-        case r@Failure(e,committed) if !committed => y(s)
-        case r => r }
+        case r @ Failure(e, committed) if !committed => y(s)
+        case r => r
+      }
 
     implicit def string(s: String): (Location) => Result[String] = { case Location(in, start) =>
       val s2 = in.substring(start, start + (s.length min (in.length - start)))
 
       if (s == s2) {
-        Success(s2, s2.length)
+        Success(s2, start + s2.length)
       } else {
         Failure(ParseError(List((Location(in, start), s"$s did not equal $s2"))), false)
       }
@@ -335,7 +343,7 @@ object Chapter9 {
 
     def slice[A](p: (Location) => Result[A]): (Location) => Result[String] = { case location @ Location(in, start) =>
       p(location) match {
-        case Success(a, charsConsumed) => Success(in.substring(start, start + charsConsumed), charsConsumed)
+        case Success(a, charsConsumed) => Success(in.substring(start, start + charsConsumed), start + charsConsumed)
         case failure: Failure => failure
       }
     }
@@ -345,13 +353,13 @@ object Chapter9 {
 
     def flatMap[A,B](f: Parser[A])(g: A => Parser[B]): Parser[B] =
       s => f(s) match {
-        case Success(a,n) => g(a)(s.advanceBy(n)).addCommit(n == 0)
-        case e@Failure(_,_) => e
+        case Success(a, n) => g(a)(s advanceBy n).addCommit(n == 0)
+        case e @ Failure(_, _) => e
       }
 
     implicit def regex(r: Regex): (Location) => Result[String] = { case loc @ Location(in, start) =>
       r.findFirstMatchIn(in.drop(start)) match {
-        case Some(m) if m.start == 0 => Success(m.matched, m.matched.length)
+        case Some(m) if m.start == 0 => Success(m.matched, start + m.matched.length)
         case _ => Failure(ParseError(List((loc, s"Did not match $r"))), false)
       }
     }
@@ -368,7 +376,6 @@ object Chapter9 {
       p(location).mapError(_.label(msg))
     }
 
-    def attempt[A](p: Parser[A]): Parser[A] =
-      s => p(s).uncommit
+    def attempt[A](p: Parser[A]): Parser[A] = s => p(s).uncommit
   }
 }
