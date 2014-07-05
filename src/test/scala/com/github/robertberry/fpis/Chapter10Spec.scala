@@ -26,6 +26,21 @@ object Chapter10Spec {
 
   implicit val arbitraryRange: Arbitrary[Range] = Arbitrary { Gen.oneOf(intRangeGen, Gen.const(ZeroRange)) }
 
+  implicit val arbitraryWordCount: Arbitrary[WordCount] = Arbitrary {
+    val partGen =
+      for {
+        s <- arbitrary[String]
+        t <- arbitrary[String]
+        wc <- Gen.chooseNum(0, 1000)
+      } yield Part(s, wc, t)
+
+    val arbitraryStringWithoutSpaces = arbitrary[String].map(_.replace(" ", ""))
+
+    val stubGen = Gen.oneOf(arbitraryStringWithoutSpaces, Gen.const("")).map(Stub.apply)
+
+    Gen.oneOf(partGen, stubGen)
+  }
+
   object Laws {
     def associativity[A](monoid: Monoid[A])(implicit arbitrary: Arbitrary[A]) = forAll { (x: A, y: A, z: A) =>
       monoid.op(monoid.op(x, y), z) == monoid.op(x, monoid.op(y, z))
@@ -80,4 +95,44 @@ class Chapter10Spec extends Specification with ScalaCheck {
     */
 
 
+}
+
+class WordCountSpec extends Specification with ScalaCheck {
+  import Chapter10Spec._
+
+  def is = "fromString" ! {
+    val expectedResults = Seq(
+      "lorem ipsum do" -> Part("lorem", 1, "do"),
+      "lor sit amet, " -> Part("lor", 2, ""),
+      " foo bar" -> Part("", 1, "bar"),
+      " and then " -> Part("", 2, ""),
+      "lor" -> Stub("lor"),
+      " " -> Stub(" "),
+      "  " -> Stub("  "),
+      "" -> Stub("")
+    )
+
+    forall(expectedResults) { case (s, wc) =>
+      WordCount.fromString(s) mustEqual wc
+    }
+  } ^ "op" ! {
+    val expectedResults = Seq(
+      (Stub(""), Stub("foo")) -> Stub("foo"),
+      (Stub("bar"), Stub("")) -> Stub("bar"),
+      (Stub(""), Stub("")) -> Stub(""),
+      (Stub(" "), Part("foo", 0, "bar")) -> Part("", 1, "bar"),
+      (Stub(""), Part("", 0, "bar")) -> Part("", 0, "bar"),
+      (Part("foo", 0, "bar"), Stub(" ")) -> Part("foo", 1, ""),
+      (Part("foo", 0, ""), Stub("")) -> Part("foo", 0, ""),
+      (Part("foo", 3, "ba"), Part("r", 1, "baz")) -> Part("foo", 5, "baz"),
+      (Part("foo", 3, "bar"), Part("", 1, "baz")) -> Part("foo", 5, "baz"),
+      (Part("foo", 3, ""), Part("bar", 1, "baz")) -> Part("foo", 5, "baz"),
+      (Part("foo", 3, ""), Part("", 1, "baz")) -> Part("foo", 4, "baz")
+    )
+
+    forall(expectedResults) {
+      case ((left, right), result) => wordCountMonoid.op(left, right) mustEqual result
+    }
+  } ^ "wordCount Monoid obeys identity law" ! { Laws.identity(wordCountMonoid) } ^
+    "wordCount Monoid obeys associativity law" ! { Laws.associativity(wordCountMonoid) }
 }

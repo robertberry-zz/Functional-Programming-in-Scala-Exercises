@@ -159,4 +159,79 @@ object Chapter10 {
     case IntRange(_, _, Variadic) => false
     case _ => true
   }
+
+  /** Exercise 10 (In the latest version of the MEAP, this is now exercise 10 ... )
+    *
+    * Write a Monoid instance for WordCount and make sure that it meets the Monoid laws
+    */
+
+  object WordCount {
+    def fromString(s: String): WordCount = {
+      val words = s.split("\\s+").toList
+
+      // Note: for some reason, when splitting a string such as ' hello world ' using the above, this actually
+      // generates Array("", "hello", "world"), which seems kind of arbitrary given the trailing spaces don't
+      // produce another word but the leaning ones do, but maybe I'm missing something. If the arithmetic below
+      // looks strange, that's why.
+      lazy val startsWithSpace = s.startsWith(" ")
+      lazy val endsWithSpace = s.endsWith(" ")
+
+      if (s.forall(_.isSpaceChar)) {
+        Stub(s)
+      } else if (startsWithSpace && endsWithSpace) {
+        Part("", words.length - 1, "")
+      } else if (startsWithSpace) {
+        Part("", words.length - 2, words.last)
+      } else if (endsWithSpace) {
+        Part(words.head, words.length - 1, "")
+      } else if (words.length == 1) {
+        Stub(words.head)
+      } else {
+        Part(words.head, words.length - 2, words.last)
+      }
+    }
+  }
+
+  sealed trait WordCount
+
+  case class Stub(chars: String) extends WordCount
+  case class Part(leftStub: String, words: Int, rightStub: String) extends WordCount
+
+  object NonEmptySpaceString {
+    def unapply(s: String) = if (s.forall(_.isSpaceChar) && s.length > 0) Some(s) else None
+  }
+
+  var wordCountMonoid = new Monoid[WordCount] {
+    override def op(a1: WordCount, a2: WordCount): WordCount = (a1, a2) match {
+      case (Stub(leftStub), Stub(rightStub)) =>
+        Stub(leftStub + rightStub)
+
+      case (Stub(leftStub), Part("", wordCount, rightStub)) =>
+        Part(leftStub, wordCount, rightStub)
+
+      case (Part(leftStub, wordCount, ""), Stub(rightStub)) =>
+        Part(leftStub, wordCount, rightStub)
+
+      case (Stub(NonEmptySpaceString(_)), Part(_, wordCount, rightStub)) =>
+        Part("", wordCount + 1, rightStub)
+
+      case (Part(leftStub, wordCount, _), Stub(NonEmptySpaceString(_))) =>
+        Part(leftStub, wordCount + 1, "")
+
+      case (Stub(leftLeftStub), Part(leftRightStub, wordCount, rightStub)) =>
+        Part(leftLeftStub + leftRightStub, wordCount, rightStub)
+
+      case (Part(leftStub, wordCount, rightLeftStub), Stub(rightRightStub)) =>
+        Part(leftStub, wordCount, rightLeftStub + rightRightStub)
+
+      case (Part(leftStub, leftWordCount, centreLeftStub), Part(centreRightStub, rightWordCount, rightStub)) =>
+        Part(
+          leftStub,
+          leftWordCount + rightWordCount + (if ((centreLeftStub + centreRightStub) == "") 0 else 1),
+          rightStub
+        )
+    }
+
+    override def zero: WordCount = Stub("")
+  }
 }
