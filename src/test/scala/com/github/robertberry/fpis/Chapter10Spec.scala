@@ -177,7 +177,7 @@ class FoldableSpec extends Specification {
 class BagSpec extends Specification {
   def is = "bag" ! {
     bag("how much wood could a woodchuck chuck if a woodchuck could chuck wood".split(" ")) mustEqual Map(
-      "woodchuck" -> 2, 
+      "woodchuck" -> 2,
       "chuck" -> 2,
       "if" -> 1,
       "a" -> 2,
