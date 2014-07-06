@@ -134,5 +134,18 @@ class WordCountSpec extends Specification with ScalaCheck {
       case ((left, right), result) => wordCountMonoid.op(left, right) mustEqual result
     }
   } ^ "wordCount Monoid obeys identity law" ! { Laws.identity(wordCountMonoid) } ^
-    "wordCount Monoid obeys associativity law" ! { Laws.associativity(wordCountMonoid) }
+    "wordCount Monoid obeys associativity law" ! { Laws.associativity(wordCountMonoid) } ^
+  "countWords" ! {
+    val expectedResults = Seq(
+      "hello world" -> 2,
+      "hello" -> 1,
+      " hello            world " -> 2,
+      "tiger tiger shining bright in the forests of the night " -> 10,
+      " what immortal hand or eye, could frame thy fearful symmetry?" -> 10
+    )
+
+    forall(expectedResults) {
+      case (word, wc) => countWords(word) mustEqual wc
+    }
+  }
 }

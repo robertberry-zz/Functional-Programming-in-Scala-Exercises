@@ -234,4 +234,34 @@ object Chapter10 {
 
     override def zero: WordCount = Stub("")
   }
+
+  /** Exercise 11
+    *
+    * Use the WordCount Monoid to implement a function that recursively splits a String then counts the words in the
+    * String
+    */
+  def countWords(str: String, threshold: Int = 10) = {
+    def iter(s: String): WordCount = {
+      if (s.length > threshold) {
+        val (left, right) = s.splitAt(s.length / 2)
+
+        wordCountMonoid.op(WordCount.fromString(left), WordCount.fromString(right))
+      } else {
+        WordCount.fromString(s)
+      }
+    }
+
+    def emptyStub(s: String) = s match {
+      case "" => true
+      case NonEmptySpaceString() => true
+      case _ => false
+    }
+
+    iter(str) match {
+      case Stub(s) if emptyStub(s) => 0
+      case Stub(_) => 1
+      case Part(leftStub, wordCount, rightStub) =>
+        wordCount + (if (!emptyStub(leftStub)) 1 else 0) + (if (!emptyStub(rightStub)) 1 else 0)
+    }
+  }
 }
