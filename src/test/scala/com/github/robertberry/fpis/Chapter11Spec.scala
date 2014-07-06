@@ -66,3 +66,23 @@ class MonadExtensions2Spec extends Specification {
     )
   }
 }
+
+class MonadExtensions3Spec extends Specification {
+  override def is: Fragments = "filterM over Option (no None)" ! {
+    optionMonad.filterM(List("1", "2", "3")) { s =>
+      Try {
+        s.toInt
+      }.toOption.map(_ > 1)
+    } mustEqual Some(List("2", "3"))
+  } ^ "filterM over Option (with None)" ! {
+    optionMonad.filterM(List("1", "b", "3")) { s =>
+      Try {
+        s.toInt
+      }.toOption.map(_ > 1)
+    } mustEqual None
+  } ^ "filterM over List" ! {
+    listMonad.filterM(List(2, 1, 0, -1, -2)) { n =>
+      List(n > 0)
+    } mustEqual List(List(2, 1))
+  }
+}

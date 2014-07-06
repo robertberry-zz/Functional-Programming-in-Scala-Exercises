@@ -121,4 +121,34 @@ object Chapter11 {
   implicit class MonadExtensions2[F[_]](monad: Monad[F]) {
     def replicateM[A](n: Int, ma: F[A]): F[List[A]] = monad.sequence(List.fill(n)(ma))
   }
+
+  /** Exercise 5
+    *
+    * Describe in your own words the meaning of replicateM
+    *
+    * For List it gives permutations of n length of items in ma
+    * For Option it gives n of what is inside the Option if defined in Some, otherwise None
+    *
+    * It's kind of hard to describe exactly what it does in a way that is both generic enough and doesn't also sound
+    * like nonsense. I guess it replicates whatever is inside the monad n times in terms of how that would be sequenced
+    * in the monad ... great explanation huh ...
+    */
+
+  /** Exercise 6
+    *
+    * Implement filterM
+    */
+  implicit class MonadExtensions3[F[_]](monad: Monad[F]) {
+    def filterM[A](ms: List[A])(f: A => F[Boolean]): F[List[A]] = ms.foldRight(monad.unit(List.empty[A])) { (a, mas) =>
+      monad.flatMap(f(a)) { p =>
+        monad.map(mas) { as =>
+          if (p) {
+            a :: as
+          } else {
+            as
+          }
+        }
+      }
+    }
+  }
 }
