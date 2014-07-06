@@ -86,3 +86,21 @@ class MonadExtensions3Spec extends Specification {
     } mustEqual List(List(2, 1))
   }
 }
+
+class MonadExtensions4Spec extends Specification {
+  override def is: Fragments = "compose over Option" ! {
+    val f = { s: String => Try { s.toInt }.toOption }
+    val g = { n: Int => if (n == 0) None else Some(1 / n) }
+    val h = optionMonad.compose(f, g)
+
+    (h("3") mustEqual Some(1 / 3)) and
+      (h("0") mustEqual None) and
+      (h("a") mustEqual None)
+  } ^ "compose over List" ! {
+    val f = { s: String => s.toList }
+    val g = { c: Char => List(c.toInt, -c.toInt) }
+    val h = listMonad.compose(f, g)
+
+    h("hello") mustEqual List(104, -104, 101, -101, 108, -108, 108, -108, 111, -111)
+  }
+}

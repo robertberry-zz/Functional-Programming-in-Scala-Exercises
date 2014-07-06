@@ -151,4 +151,16 @@ object Chapter11 {
       }
     }
   }
+
+  /** Exercise 7
+    *
+    * Implement compose for a Kleisli arrow
+    */
+  implicit class MonadExtensions4[F[_]](monad: Monad[F]) {
+    def compose[A, B, C](f: A => F[B], g: B => F[C]): A => F[C] = { a: A =>
+      monad.flatMap(f(a)) { b =>
+        g(b)
+      }
+    }
+  }
 }
