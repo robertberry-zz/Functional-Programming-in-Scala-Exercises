@@ -74,4 +74,43 @@ object Chapter11 {
     override def flatMap[A, B](ma: List[A])(f: (A) => List[B]): List[B] =
       ma.flatMap(f)
   }
+
+  /** Exercise 2
+    *
+    * Implement a Monad for State
+    */
+  import Chapter6.State
+
+  /** FSKing type lambdas! */
+  def stateMonad[S] = new Monad[({type λ[α] = State[S, α]})#λ] {
+    override def unit[A](a: => A): State[S, A] = State { s =>
+      (a, s)
+    }
+
+    override def flatMap[A, B](ma: State[S, A])(f: (A) => State[S, B]): State[S, B] = ma.flatMap(f)
+  }
+
+  /** Exercise 3
+    *
+    * Implement sequence and traverse for monad
+    */
+  implicit class MonadExtensions1[F[_]](monad: Monad[F]) {
+    def sequence[A](ma: List[F[A]]): F[List[A]] =
+      ma.foldRight(monad.unit(List.empty[A])) { (ma, acc) =>
+        monad.flatMap(ma) { a =>
+          monad.map(acc) { as =>
+            a :: as
+          }
+        }
+      }
+
+    def traverse[A, B](as: List[A])(f: A => F[B]): F[List[B]] =
+      as.foldRight(monad.unit(List.empty[B])) { (a, acc) =>
+        monad.flatMap(f(a)) { b =>
+          monad.map(acc) { bs =>
+            b :: bs
+          }
+        }
+      }
+  }
 }
