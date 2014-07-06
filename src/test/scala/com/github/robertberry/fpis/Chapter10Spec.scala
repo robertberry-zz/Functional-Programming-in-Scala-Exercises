@@ -173,3 +173,18 @@ class FoldableSpec extends Specification {
     optionFoldable.foldMap(Some("hello"))(_.length)(intAddition) mustEqual Some("hello").map(_.length).get
   }
 }
+
+class BagSpec extends Specification {
+  def is = "bag" ! {
+    bag("how much wood could a woodchuck chuck if a woodchuck could chuck wood".split(" ")) mustEqual Map(
+      "woodchuck" -> 2, 
+      "chuck" -> 2,
+      "if" -> 1,
+      "a" -> 2,
+      "how" -> 1,
+      "much" -> 1,
+      "wood" -> 2,
+      "could" -> 2
+    )
+  }
+}

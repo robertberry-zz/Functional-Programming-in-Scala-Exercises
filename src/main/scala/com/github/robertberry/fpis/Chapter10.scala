@@ -288,7 +288,7 @@ object Chapter10 {
       as.foldLeft(z)(f)
 
     override def foldMap[A, B](as: List[A])(f: (A) => B)(mb: Monoid[B]): B =
-      foldLeft(as)(mb.zero) { (b, a) =>
+      foldRight(as)(mb.zero) { (a, b) =>
         mb.op(b, f(a))
       }
   }
@@ -325,16 +325,17 @@ object Chapter10 {
     */
   import Chapter3.{Tree, Leaf, Branch}
 
-  /*def treeFoldLeft[A, B](as: Tree[A])(z: B)(f: (A, B) => B) = {
+  /*
+  def treeFoldLeft[A, B](as: Tree[A])(z: B)(f: (A, B) => B) = {
     as match {
       case Leaf(a) => f(a, z)
       case Branch(left, right) =>
         val leftVal
     }
-  }
+  }*/
 
   // TODO ...
-
+/*
   val treeFoldable = new Foldable[Tree] {
     override def foldRight[A, B](as: Tree[A])(z: B)(f: (A, B) => B): B = ???
 
@@ -360,5 +361,60 @@ object Chapter10 {
 
     override def foldMap[A, B](as: Option[A])(f: (A) => B)(mb: Monoid[B]): B =
       as.map(f).getOrElse(mb.zero)
+  }
+
+  /** Exercise 15
+    *
+    * Any Foldable structure can be turned into a List. Write this conversion in a generic way.
+    */
+  implicit class FoldableToListExtension[F[_]](foldable: Foldable[F]) {
+    def toList[A](fa: F[A]): List[A] =
+      foldable.foldRight(fa)(List.empty[A])(_ :: _)
+  }
+
+  /** Exercise 16
+    *
+    * Implement the product monoid function
+    */
+  def productMonoid[A, B](aMonoid: Monoid[A], bMonoid: Monoid[B]): Monoid[(A, B)] = new Monoid[(A, B)] {
+    override def op(t1: (A, B), t2: (A, B)): (A, B) = {
+      val (a1, b1) = t1
+      val (a2, b2) = t2
+
+      (aMonoid.op(a1, a2), bMonoid.op(b1, b2))
+    }
+
+    override def zero: (A, B) =
+      (aMonoid.zero, bMonoid.zero)
+  }
+
+  /** Exercise 17
+    *
+    * Write a monoid instance for functions whose results are monoids
+    */
+  def functionMonoid[A, B](monoid: Monoid[B]): Monoid[A => B] = {
+    new Monoid[A => B] {
+      override def op(f1: (A) => B, f2: (A) => B): (A) => B =
+        (a: A) => monoid.op(f1(a), f2(a))
+
+      override def zero: (A) => B =
+        (a: A) => monoid.zero
+    }
+  }
+
+  /** Exercise 18
+    *
+    * ??? Instructions seem to be missing. Implement bag.
+    */
+  def mapMergeMonoid[K,V](V: Monoid[V]): Monoid[Map[K, V]] =
+    new Monoid[Map[K, V]] {
+      def zero = Map()
+      def op(a: Map[K, V], b: Map[K, V]) =
+        a.foldLeft(b) {
+          case (m,(k,v)) => m + (k -> V.op(v, m.get(k) getOrElse V.zero))
+        } }
+
+  def bag[A](as: IndexedSeq[A]): Map[A, Int] = {
+    indexedSeqFoldable.foldMap(as)(a => Map(a -> 1))(mapMergeMonoid(intAddition))
   }
 }
