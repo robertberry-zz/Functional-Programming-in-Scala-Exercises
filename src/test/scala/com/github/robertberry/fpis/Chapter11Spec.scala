@@ -47,3 +47,22 @@ class MonadExtensions1Spec extends Specification {
     } mustEqual None
   }
 }
+
+class MonadExtensions2Spec extends Specification {
+  override def is: Fragments = "replicateM over Option" ! {
+    (optionMonad.replicateM(5, Some(1)) mustEqual Some(List(1, 1, 1, 1, 1))) and
+      (optionMonad.replicateM(5, None) mustEqual None)
+  } ^ "replicateM over List" ! {
+    listMonad.replicateM(2, List(1, 2, 3)) mustEqual List(
+      List(1, 1),
+      List(1, 2),
+      List(1, 3),
+      List(2, 1),
+      List(2, 2),
+      List(2, 3),
+      List(3, 1),
+      List(3, 2),
+      List(3, 3)
+    )
+  }
+}

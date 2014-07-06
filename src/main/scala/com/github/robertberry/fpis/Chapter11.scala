@@ -113,4 +113,12 @@ object Chapter11 {
         }
       }
   }
+
+  /** Exercise 4
+    *
+    * Implement replicateM
+    */
+  implicit class MonadExtensions2[F[_]](monad: Monad[F]) {
+    def replicateM[A](n: Int, ma: F[A]): F[List[A]] = monad.sequence(List.fill(n)(ma))
+  }
 }
