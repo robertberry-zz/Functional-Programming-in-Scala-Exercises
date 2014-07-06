@@ -149,3 +149,27 @@ class WordCountSpec extends Specification with ScalaCheck {
     }
   }
 }
+
+class FoldableSpec extends Specification {
+  def is = "optionFoldable uses default for None in foldLeft" ! {
+    optionFoldable.foldLeft(Option.empty[String])(0) { case (n, s) =>
+      n + s.length
+    } mustEqual 0
+  } ^ "optionFoldable uses f for Some in foldLeft" ! {
+    optionFoldable.foldLeft(Some("foo"))(4) { case (n, s) =>
+      n + s.length
+    } mustEqual 7
+  } ^ "optionFoldable uses default for None in foldRight" ! {
+    optionFoldable.foldRight(Option.empty[String])(0) { case (s, n) =>
+      n + s.length
+    } mustEqual 0
+  } ^ "optionFoldable uses f for Some in foldRight" ! {
+    optionFoldable.foldRight(Some("foo"))(4) { case (s, n) =>
+      n + s.length
+    } mustEqual 7
+  } ^ "optionFoldable uses zero for None" ! {
+    optionFoldable.foldMap(Option.empty[String])(_.length)(intAddition) mustEqual 0
+  } ^ "optionFoldable acts as map then get for Some" ! {
+    optionFoldable.foldMap(Some("hello"))(_.length)(intAddition) mustEqual Some("hello").map(_.length).get
+  }
+}
