@@ -325,24 +325,36 @@ object Chapter10 {
     */
   import Chapter3.{Tree, Leaf, Branch}
 
-  /*
-  def treeFoldLeft[A, B](as: Tree[A])(z: B)(f: (A, B) => B) = {
+  def treeFoldRight[A, B](as: Tree[A])(z: B)(f: (A, B) => B): B = {
     as match {
       case Leaf(a) => f(a, z)
       case Branch(left, right) =>
-        val leftVal
+        val rightResult = treeFoldRight(right)(z)(f)
+        treeFoldRight(left)(rightResult)(f)
     }
-  }*/
+  }
 
-  // TODO ...
-/*
+  def treeFoldLeft[A, B](as: Tree[A])(z: B)(f: (B, A) => B): B = {
+    as match {
+      case Leaf(a) => f(z, a)
+      case Branch(left, right) =>
+        val leftResult = treeFoldLeft(left)(z)(f)
+        treeFoldLeft(right)(leftResult)(f)
+    }
+  }
+
   val treeFoldable = new Foldable[Tree] {
-    override def foldRight[A, B](as: Tree[A])(z: B)(f: (A, B) => B): B = ???
+    override def foldRight[A, B](as: Tree[A])(z: B)(f: (A, B) => B): B =
+      treeFoldRight(as)(z)(f)
 
-    override def foldLeft[A, B](as: Tree[A])(z: B)(f: (B, A) => B): B = ???
+    override def foldLeft[A, B](as: Tree[A])(z: B)(f: (B, A) => B): B =
+      treeFoldLeft(as)(z)(f)
 
-    override def foldMap[A, B](as: Tree[A])(f: (A) => B)(mb: Monoid[B]): B = ???
-  }*/
+    override def foldMap[A, B](as: Tree[A])(f: (A) => B)(mb: Monoid[B]): B =
+      treeFoldLeft(as)(mb.zero) { (b, a) =>
+        mb.op(b, f(a))
+      }
+  }
 
   /** Flips parameters around in a binary function */
   def flip[A, B, C](f: (A, B) => C): (B, A) => C =
