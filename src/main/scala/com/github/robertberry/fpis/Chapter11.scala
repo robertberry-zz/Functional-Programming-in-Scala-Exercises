@@ -326,6 +326,135 @@ object Chapter11 {
     *
     * --
     *
+    * Identity law:
+    *
+    * join(map(x)(unit)) == x
+    * join(map(unit(y))(f)) == f(y)
+    *
+    * Associativity law:
+    *
+    * join(map(map(x)(f))(g)) == join(map(x)(a => map(f(a))(g)))
+    *
+    * TODO not sure about these - write proofs.
+    */
+
+  /** Exercise 15
+    *
+    * Explain in your own words what the associative law means for Par and Parser.
+    *
+    * --
+    *
+    * TODO
+    */
+
+  /** Exercise 16
+    *
+    * Explain in your own words what the identity law means for Gen and List.
+    *
+    * Gen:
+    *
+    * That the function mapped over the Gen does not affect how the pseudo-random numbers are generated and fed into
+    * subsequent Gens. ??
+    *
+    * List:
+    *
+    * That the function mapped over the List does not affect the structure of the List itself. It will neither add nor
+    * remove any elements.
+    */
+
+  /** Exercise 17
+    *
+    * Implement Monad[Id]
+    */
+  case class Id[A](value: A) {
+    def map[B](f: A => B): Id[B] = Id(f(value))
+
+    def flatMap[B](f: A => Id[B]): Id[B] = f(value)
+  }
+
+  val idMonad = new Monad[Id] {
+    override def unit[A](a: => A): Id[A] = Id(a)
+
+    override def flatMap[A, B](ma: Id[A])(f: (A) => Id[B]): Id[B] =
+      ma.flatMap(f)
+  }
+
+  /** Exercise 18
+    *
+    * What is the meaning of replicateM for the State monad?
+    *
+    * How does map2 behave?
+    *
+    * What about sequence?
+    *
+    * --
+    *
+    * replicateM applies the stateful computation n times to the state, collecting the results into a list.
+    *
+    * map2 threads the state through the first stateful computation and then the second, returning the result of
+    * applying f to the two results of those computations.
+    *
+    * sequence threads the state through the list of stateful computations, collecting the results into a list.
+    */
+
+  /** Exercise 19
+    *
+    * What laws do you expect to mutually hold for getState, setState, unit and flatMap
+    *
+    * TODO
+    */
+
+  /** Exercise 20
+    *
+    * Implement the monad instance for Reader.
+    */
+  case class Reader[R, A](run: R => A)
+
+  object Reader {
+    def readerMonad[R] = new Monad[({type f[x] = Reader[R,x]})#f] {
+      def unit[A](a: => A): Reader[R, A] =
+        Reader(_ => a)
+
+      def flatMap[A, B](st: Reader[R, A])(f: A => Reader[R, B]): Reader[R, B] = Reader { r: R =>
+        f(st.run(r)).run(r)
+      }
+    }
+  }
+
+  /** Exercise 20 (cont.)
+    *
+    * What does it mean?
+    * --
+    * It's a function that reads a value and produces something else. As none of the primitive operations are able to
+    * change or create an R, it must feed the same value through throughout.
+    *
+    *
+    * What are its primitive operations?
+    * --
+    * get = Reader(identity) would just return the value.
+    *
+    * What is the meaning of flatMap?
+    * --
+    *
+    * Feeds the argument into the first reader to get an a, which is then fed to f to produce another reader, into which
+    * is fed the argument again, to produce the final value.
+    *
+    * What meaning does it give to sequence, join, and replicateM?
+    * --
+    * Sequence creates a reader that takes a list of readers, feeds the argument into each one, and returns a list of
+    * the results.
+    *
+    * Join takes a reader that produces a reader, and creates a new reader that feeds the argument to that, then to
+    * the resultant reader, to get the final value.
+    *
+    * replicateM creates a reader the same as the given reader except it produces the resultant value n times in a list.
+    *
+    * i.e., listMonad.replicateM(n, r.run(x)) == readerMonad.replicateM(n, r).run(x)
+    *
+    *
+    * What meaning does it give to the monad laws?
+    * --
+    *
     * TODO
     */
 }
