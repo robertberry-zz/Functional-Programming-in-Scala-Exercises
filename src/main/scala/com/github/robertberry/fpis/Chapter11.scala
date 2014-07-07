@@ -298,4 +298,34 @@ object Chapter11 {
     *
     * None == None
     */
+
+  /** Exercise 12
+    *
+    * Implement join
+    */
+  implicit class MonadExtensions6[F[_]](monad: Monad[F]) {
+    def join[A](mma: F[F[A]]): F[A] = monad.flatMap(mma)(identity)
+  }
+
+  /** Exercise 13
+    *
+    * Implement flatMap and compose in terms of join
+    */
+  implicit class MonadExtensions7[F[_]](monad: Monad[F]) {
+    def flatMap3[A,B](ma: F[A])(f: A => F[B]): F[B] =
+      monad.join(monad.map(ma)(f))
+
+    def compose2[A, B, C](f: A => F[B], g: B => F[C]): A => F[C] = { a: A =>
+      monad.join(monad.map(f(a))(g))
+    }
+  }
+
+  /** Exercise 14
+    *
+    * Restate the Monad laws making use only of map, join and unit
+    *
+    * --
+    *
+    * TODO
+    */
 }

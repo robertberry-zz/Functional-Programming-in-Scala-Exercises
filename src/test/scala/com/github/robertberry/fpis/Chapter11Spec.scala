@@ -116,3 +116,13 @@ class MonadExtensions5Spec extends Specification {
     } mustEqual None)
   }
 }
+
+class MonadExtensions6Spec extends Specification {
+  override def is: Fragments = "join over Option" ! {
+    (optionMonad.join(Some(Some(1))) mustEqual Some(1)) and
+      (optionMonad.join(None) mustEqual None) and
+      (optionMonad.join(Some(None)) mustEqual None)
+  } ^ "join over List" ! {
+    listMonad.join(List(List(1, 2), List(3, 4), List(5))) mustEqual List(1, 2, 3, 4, 5)
+  }
+}
