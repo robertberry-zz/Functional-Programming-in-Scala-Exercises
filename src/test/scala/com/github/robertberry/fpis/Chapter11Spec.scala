@@ -104,3 +104,15 @@ class MonadExtensions4Spec extends Specification {
     h("hello") mustEqual List(104, -104, 101, -101, 108, -108, 108, -108, 111, -111)
   }
 }
+
+class MonadExtensions5Spec extends Specification {
+  override def is: Fragments = "flatMap over Option" ! {
+    (Some(1) flatMap { n =>
+      Some(n + 5)
+    } mustEqual Some(6)) and (Option.empty[Int] flatMap { n =>
+      Some(n + 5)
+    } mustEqual None) and (Some(1) flatMap { n =>
+      None
+    } mustEqual None)
+  }
+}

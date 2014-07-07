@@ -163,4 +163,40 @@ object Chapter11 {
       }
     }
   }
+
+  /** Exercise 8
+    *
+    * Implement flatMap in terms of compose
+    */
+  implicit class MonadExtensions5[F[_]](monad: Monad[F]) {
+    def flatMap2[A, B](ma: F[A])(f: A => F[B]): F[B] =
+      monad.compose({ _: Unit => ma }, f)(())
+  }
+
+  /** Exercise 9
+    *
+    * Show that the two formulations of the associative law -- one in terms of compose, one in terms of flatMap --
+    * are equivalent.
+    *
+    * flatMap:
+    *
+    * x.flatMap(f).flatMap(g) == x.flatMap(a => f(a).flatMap(g))
+    *
+    * compose:
+    *
+    * compose(compose(f, g), h) === compose(f, compose(g, h))
+    *
+    * --
+    *
+    * Start with compose law. Substitute in definition through flatMap:
+    *
+    * (b => (a => f(a).flatMap(g))(b).flatMap(h)) === (a => f(a).flatMap(b => g(b).flatMap(h)))
+    *
+    * Simplify function application:
+    *
+    * (b => f(b).flatMap(g).flatMap(h)) === (a => f(a).flatMap(b => g(b).flatMap(h)))
+    *
+    * Are there further simplification rules I can apply here? This looks almost exactly like the definition of flatMap
+    * above, accept x is f(b) and all is inside a function call ...
+    */
 }
