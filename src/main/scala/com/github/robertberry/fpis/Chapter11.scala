@@ -196,7 +196,106 @@ object Chapter11 {
     *
     * (b => f(b).flatMap(g).flatMap(h)) === (a => f(a).flatMap(b => g(b).flatMap(h)))
     *
-    * Are there further simplification rules I can apply here? This looks almost exactly like the definition of flatMap
-    * above, accept x is f(b) and all is inside a function call ...
+    * Let f(y) === x
+    *
+    * (b => f(b).flatMap(g).flatMap(h))(y) === (a => f(a).flatMap(b => g(b).flatMap(h)))(y)
+    *
+    * Simplify function application:
+    *
+    * f(y).flatMap(g).flatMap(h) === f(y).flatMap(b => g(b).flatMap(h))
+    *
+    * x.flatMap(g).flatMap(h) === x.flatMap(b => g(b).flatMap(h))
+    */
+
+  /** Exercise 10
+    *
+    * Show that the two formulations of the identity law are equivalent
+    *
+    * flatMap:
+    *
+    * flatMap(x)(unit) == x
+    * flatMap(unit(y))(f) == f(y)
+    *
+    * compose:
+    *
+    * compose(f, unit) == f
+    * compose(unit, f) == f
+    *
+    * --
+    *
+    * Start with compose law. Substitute in definition.
+    *
+    * compose(f, unit) == f
+    *
+    * a => flatMap(f(a))(unit) == f
+    *
+    * Let x = f(y). Apply both sides to y.
+    *
+    * (a => flatMap(f(a))(unit))(y) == f(y)
+    *
+    * Simplify function application:
+    *
+    * flatMap(f(y))(unit) == f(y)
+    *
+    * flatMap(x)(unit) == x
+    *
+    * --
+    *
+    * Now the other side:
+    *
+    * compose(unit, f) == f
+    *
+    * Substitute in definition:
+    *
+    * a => flatMap(unit)(f(a)) == f
+    *
+    * Apply both sides to y:
+    *
+    * (a => flatMap(unit(a))(f))(y) == f(y)
+    *
+    * Simplify function application:
+    *
+    * flatMap(unit(y))(f) == f(y)
+    */
+
+  /** Exercise 11
+    *
+    * Prove that the identity laws hold for a Monad of your choice.
+    *
+    * --
+    *
+    * Using Option as it's easy peasy. :-)
+    *
+    * Start with the Some case.
+    *
+    * flatMap(Some(a))(unit) == Some(a)
+    *
+    * Substitute in definition of flatMap:
+    *
+    * unit(a) == Some(a)
+    *
+    * Substitute in definition of unit:
+    *
+    * Some(a) == Some(a)
+    *
+    * Now the other side:
+    *
+    * flatMap(unit(a))(f) == f(a)
+    *
+    * Substitute in definition of unit:
+    *
+    * flatMap(Some(a))(f) == f(a)
+    *
+    * Substitute in definition of flatMap:
+    *
+    * f(a) == f(a)
+    *
+    * Now let's do the None case:
+    *
+    * flatMap(None)(unit) == None
+    *
+    * Substitute in definition of flatMap:
+    *
+    * None == None
     */
 }
