@@ -144,9 +144,88 @@ object Chapter12 {
     *
     * Try to implement compose on Monad. It's not possible but it's constructive to figure out why.
     */
+
+  /*
   import Chapter11.Monad
 
-  implicit class MonadExtensions1[F[_]](M: Monad[F]) {
-    
+  implicit class MonadExtensions1[F[_]](F: Monad[F]) {
+    def compose[G[_]](G: Monad[G]): Monad[({type f[x] = F[G[x]]})#f] = new Monad[({type f[x] = F[G[x]]})#f] {
+      override def unit[A](a: => A): F[G[A]] = F.unit(G.unit(a))
+
+      override def flatMap[A, B](ma: F[G[A]])(f: (A) => F[G[B]]): F[G[B]] = {
+        F.flatMap(ma) { ga =>
+          G.flatMap(ga) { a =>
+            f(a)
+
+            ???
+          }
+        }
+      }
+    }
   }
+  */
+
+  /** Exercise 12
+    *
+    * On the Applicative trait, implement sequence over a Map rather than a List
+    */
+  implicit class ApplicativeExtensions6[F[_]](F: Applicative[F]) {
+    def sequenceMap[K,V](ofa: Map[K,F[V]]): F[Map[K,V]] = ofa.foldLeft(F.unit(Map.empty[K, V])) {
+      case (facc, (k, fv)) =>
+        F.map2(facc, fv) { (acc, v) =>
+          acc + (k -> v)
+        }
+    }
+  }
+
+  trait Traverse[F[_]] {
+    def traverse[G[_]: Applicative, A, B](fa: F[A])(f: A => G[B]): G[F[B]]
+
+    def sequence[G[_]: Applicative, A](fga: F[G[A]]): G[F[A]] =
+      traverse(fga)(identity)
+  }
+
+  /** Exercise 13
+    *
+    * Write Traverse instances for List, Option, Map and Tree
+    */
+  val listTraverse = new Traverse[List] {
+    override def traverse[G[_]: Applicative, A, B](fa: List[A])(f: (A) => G[B]): G[List[B]] =
+      implicitly[Applicative[G]].sequence(fa.map(f))
+  }
+
+  val optionTraverse = new Traverse[Option] {
+    override def traverse[G[_]: Applicative, A, B](fa: Option[A])(f: (A) => G[B]): G[Option[B]] = {
+      val F = implicitly[Applicative[G]]
+      fa.map(a => F.map(f(a))(Option.apply[B])) getOrElse F.unit(Option.empty[B])
+    }
+  }
+
+  def mapTraverse[K] = new Traverse[({type h[V] = Map[K, V]})#h] {
+    override def traverse[G[_]: Applicative, A, B](fa: Map[K, A])(f: (A) => G[B]): G[Map[K, B]] = {
+      val F = implicitly[Applicative[G]]
+
+      fa.foldLeft(F.unit(Map.empty[K, B])) { case (facc, (k, v)) =>
+        F.map2(facc, f(v)) { (acc, v) =>
+          acc + (k -> v)
+        }
+      }
+    }
+  }
+
+  import com.github.robertberry.fpis.Chapter3.{Tree, Leaf, Branch, foldT}
+
+  val treeTraverse = new Traverse[Tree] {
+    override def traverse[G[_]: Applicative, A, B](fa: Tree[A])(f: (A) => G[B]): G[Tree[B]] = {
+      val F = implicitly[Applicative[G]]
+
+      foldT[A, G[Tree[B]]](fa)(a => F.map(f(a))(Leaf.apply)) { (fb1, fb2) =>
+        F.map2(fb1, fb2) { (b1, b2) =>
+          Branch(b1, b2)
+        }
+      }
+    }
+  }
+
+  
 }
