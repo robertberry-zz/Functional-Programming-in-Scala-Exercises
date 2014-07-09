@@ -343,7 +343,6 @@ object Chapter11 {
     * Explain in your own words what the associative law means for Par and Parser.
     *
     * --
-    *
     * TODO
     */
 
@@ -401,7 +400,9 @@ object Chapter11 {
     *
     * What laws do you expect to mutually hold for getState, setState, unit and flatMap
     *
-    * TODO
+    * getState.flatMap(setState) == unit(())
+    *
+    * TODO more
     */
 
   /** Exercise 20
