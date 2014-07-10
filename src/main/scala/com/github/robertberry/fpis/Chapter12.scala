@@ -244,5 +244,37 @@ object Chapter12 {
       traverse.traverse[Id, A, B](fa)(f)
   }
 
-  
+  import Chapter10.Monoid
+
+  type Const[M, B] = M
+
+  implicit def monoidApplicative[M](M: Monoid[M]) =
+    new Applicative[({ type f[x] = Const[M, x] })#f] {
+      def unit[A](a: => A): M = M.zero
+
+      def map2[A,B,C](m1: M, m2: M)(f: (A,B) => C): M = M.op(m1,m2)
+    }
+
+  /** Exercise 15
+    *
+    * Can you think of a Foldable that isn't a Functor?
+    */
+  import Chapter10.{Foldable, flip}
+
+  type Endofunction[A] = A => A
+
+  case class WhutIsThis[A](f: Endofunction[A], a: A)
+
+  val whutIsThisFoldable = new Foldable[WhutIsThis] {
+    override def foldRight[A, B](as: WhutIsThis[A])(z: B)(f: (A, B) => B): B = {
+      val WhutIsThis(g, a) = as
+      f(g(a), z)
+    }
+
+    override def foldLeft[A, B](as: WhutIsThis[A])(z: B)(f: (B, A) => B): B = foldRight(as)(z)(flip(f))
+
+    override def foldMap[A, B](as: WhutIsThis[A])(f: (A) => B)(mb: Monoid[B]): B = foldRight(as)(mb.zero) { (whut, acc) =>
+      mb.op(f(whut), acc)
+    }
+  }
 }
