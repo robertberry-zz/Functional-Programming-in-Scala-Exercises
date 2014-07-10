@@ -227,5 +227,22 @@ object Chapter12 {
     }
   }
 
+  /** Exercise 14
+    *
+    * Implement map in terms of traverse as a method on Traverse[F].
+    */
+  type Id[A] = A
+
+  val identityApplicative = new Applicative[Id] {
+    override def map2[A, B, C](fa: Id[A], fb: Id[B])(f: (A, B) => C): Id[C] = f(fa, fb)
+
+    override def unit[A](a: => A): Id[A] = a
+  }
+
+  implicit class TraverseExtensions1[F[_]](traverse: Traverse[F]) {
+    def map[A, B](fa: F[A])(f: A => B): F[B] =
+      traverse.traverse[Id, A, B](fa)(f)
+  }
+
   
 }
