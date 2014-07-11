@@ -1,6 +1,7 @@
 package com.github.robertberry.fpis
 
 import com.github.robertberry.fpis.Chapter11.Functor
+import com.github.robertberry.fpis.Chapter6.State
 
 object Chapter12 {
   trait Applicative[F[_]] extends Functor[F] {
@@ -277,4 +278,13 @@ object Chapter12 {
       mb.op(f(whut), acc)
     }
   }
+
+  import Chapter11.stateMonad
+
+  implicit class TraverseExtensions2[F[_]](traverse: Traverse[F]) {
+    def traverseS[S,A,B](fa: F[A])(f: A => State[S, B]): State[S, F[B]] =
+      traverse.traverse[({type f[x] = State[S,x]})#f,A,B](fa)(f)(stateMonad)
+  }
+
+  
 }

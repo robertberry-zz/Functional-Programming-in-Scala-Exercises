@@ -1,5 +1,7 @@
 package com.github.robertberry.fpis
 
+import com.github.robertberry.fpis.Chapter12.Applicative
+
 object Chapter11 {
   trait Functor[F[_]] {
     def map[A, B](fa: F[A])(f: A => B): F[B]
@@ -18,11 +20,9 @@ object Chapter11 {
     def map[A, B](as: List[A])(f: A => B): List[B] = as map f
   }
 
-  trait Monad[F[_]] extends Functor[F] {
+  trait Monad[F[_]] extends Functor[F] with Applicative[F] {
     def unit[A](a: => A): F[A]
     def flatMap[A,B](ma: F[A])(f: A => F[B]): F[B]
-    def map[A,B](ma: F[A])(f: A => B): F[B] =
-      flatMap(ma)(a => unit(f(a)))
     def map2[A,B,C](ma: F[A], mb: F[B])(f: (A, B) => C): F[C] =
       flatMap(ma)(a => map(mb)(b => f(a, b)))
   }
