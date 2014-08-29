@@ -21,10 +21,11 @@ object Chapter10Spec {
   val intRangeGen = for {
       i <- arbitrary[Int]
       j <- arbitrary[Int]
-      ordering <- if (i == j) Gen.const(Level) else Gen.oneOf(Ascending, Descending, Variadic)
-    } yield IntRange(i min j, i max j, ordering)
+    } yield OrderedRange(i min j, i max j)
 
-  implicit val arbitraryRange: Arbitrary[Range] = Arbitrary { Gen.oneOf(intRangeGen, Gen.const(ZeroRange)) }
+  implicit val arbitraryRange: Arbitrary[Range] = Arbitrary {
+    Gen.oneOf(intRangeGen, Gen.const(ZeroRange), Gen.const(UnorderedRange))
+  }
 
   implicit val arbitraryWordCount: Arbitrary[WordCount] = Arbitrary {
     val partGen =
@@ -77,7 +78,7 @@ class Chapter10Spec extends Specification with ScalaCheck {
       xs.length > 100 || foldMapV(xs, intAddition)(_.length) == xs.map(_.length).sum
     } ^ "ordered range Monoid obeys laws" ! { Laws.identity(rangeMonoid) && Laws.associativity(rangeMonoid) } ^
     "foldMapV ordering monoid" ! prop { xs: List[Int] =>
-      xs.length > 100 || isOrdered(xs.toArray) == (xs == xs.sorted || xs == xs.sorted.reverse)
+      xs.length > 100 || isOrdered(xs.toArray) == (xs == xs.sorted)
     }
 
 

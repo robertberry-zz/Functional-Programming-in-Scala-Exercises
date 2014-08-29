@@ -234,7 +234,7 @@ object Chapter12 {
     */
   type Id[A] = A
 
-  val identityApplicative = new Applicative[Id] {
+  implicit val identityApplicative = new Applicative[Id] {
     override def map2[A, B, C](fa: Id[A], fb: Id[B])(f: (A, B) => C): Id[C] = f(fa, fb)
 
     override def unit[A](a: => A): Id[A] = a
@@ -286,5 +286,5 @@ object Chapter12 {
       traverse.traverse[({type f[x] = State[S,x]})#f,A,B](fa)(f)(stateMonad)
   }
 
-  
+
 }

@@ -124,39 +124,31 @@ object Chapter10 {
     *
     * You will need to come up with a creative Monoid.
     */
-
-  /** This is inelegant, but I couldn't think of a better solution at the time. :-( */
-  sealed trait Order
-  case object Ascending extends Order
-  case object Descending extends Order
-  case object Level extends Order
-  case object Variadic extends Order
-
   sealed trait Range
-  case object ZeroRange extends Range
-  case class IntRange(low: Int, high: Int, order: Order) extends Range
 
-  val rangeMonoid = new Monoid[Range] {
-    def op(a1: Range, a2: Range): Range = (a1, a2) match {
-      case (ZeroRange, x) => x
-      case (x, ZeroRange) => x
-      case (IntRange(xLow, xHigh, xOrder), IntRange(yLow, yHigh, yOrder)) => IntRange(
-        xLow min yLow,
-        xHigh max yHigh,
-        (xOrder, yOrder) match {
-          case (Level, Level) if xHigh == yLow => Level
-          case (Ascending | Level, Ascending | Level) if xHigh <= yLow => Ascending
-          case (Descending | Level, Descending | Level) if xLow >= yHigh => Descending
-          case otherwise => Variadic
+  case object ZeroRange extends Range
+  case object UnorderedRange extends Range
+  case class OrderedRange(min: Int, max: Int) extends Range
+
+  implicit def rangeMonoid = new Monoid[Range] {
+    override def op(a1: Range, a2: Range): Range = (a1, a2) match {
+      case (ZeroRange, a) => a
+      case (a, ZeroRange) => a
+      case (UnorderedRange, _) => UnorderedRange
+      case (_, UnorderedRange) => UnorderedRange
+      case (OrderedRange(minLeft, maxLeft), OrderedRange(minRight, maxRight)) =>
+        if (maxLeft > minRight) {
+          UnorderedRange
+        } else {
+          OrderedRange(minLeft, maxRight)
         }
-      )
     }
 
-    def zero: Range = ZeroRange
+    override def zero: Range = ZeroRange
   }
 
-  def isOrdered(xs: IndexedSeq[Int]) = foldMapV(xs, rangeMonoid)(x => IntRange(x, x, Level)) match {
-    case IntRange(_, _, Variadic) => false
+  def isOrdered(xs: IndexedSeq[Int]) = foldMapV(xs, rangeMonoid)(x => OrderedRange(x, x)) match {
+    case UnorderedRange => false
     case _ => true
   }
 
