@@ -1,6 +1,6 @@
 package com.github.robertberry.fpis
 
-import com.github.robertberry.fpis.Chapter11.Functor
+import com.github.robertberry.fpis.Chapter11.{Monad, Functor}
 import com.github.robertberry.fpis.Chapter6.State
 import State._
 
@@ -306,7 +306,69 @@ object Chapter12 {
   implicit class TraverseExtensions3[F[_]](traverse: Traverse[F]) {
     def reverse[A](fa: F[A]): F[A] = {
       val as = traverse.mapAccum(fa, List.empty[A])((a, s) => ((), a :: s))._2
-      traverse.mapAccum(fa, as) { case (a, h :: t) => (h, t) }._1
+      traverse.mapAccum(fa, as) {
+        case (a, h :: t) => (h, t)
+        case (_, Nil) => sys.error("Traverse does not maintain shape")
+      }._1
     }
   }
+
+  /** Exercise 17
+    *
+    * Use mapAccum to give a default implementation of foldLeft for the Traverse trait.
+    */
+  implicit class TraverseExtensions4[F[_]](traverse: Traverse[F]) {
+    def foldLeft[A, B](fa: F[A])(s: B)(f: (B, A) => B): B = {
+      traverse.mapAccum(fa, s) { (a, b) =>
+        ((), f(b, a))
+      }._2
+    }
+  }
+
+  /** Exercise 18
+    *
+    * Use applicative functor products to write the fusion of two traversals. This function will, given two functions f
+    * and g, traverse fa a single time, collecting the results of both functions at once.
+    */
+  implicit class TraverseExtensions5[F[_]](traverse: Traverse[F]) {
+    def fuse[G[_], H[_], A, B](fa: F[A])(f: A => G[B], g: A => H[B])(G: Applicative[G], H: Applicative[H]): (G[F[B]], H[F[B]]) = {
+      traverse.traverse[({ type f[Y] = (G[Y], H[Y]) })#f, A, B](fa)({ a =>
+        f(a) -> g(a)
+      })(G.product(H))
+    }
+  }
+
+  /** Exercise 19
+    *
+    * Implement the composition of two Traverse instances.
+    */
+  implicit class TraverseExtensions6[F[_]](M: Traverse[F]) {
+    def compose[L[_]](implicit N: Traverse[L]) = new Traverse[({type f[x] = F[L[x]]})#f] {
+      override def traverse[G[_]: Applicative, A, B](fa: F[L[A]])(f: (A) => G[B]): G[F[L[B]]] = {
+        M.traverse(fa) { la =>
+          N.traverse(la) { a =>
+            f(a)
+          }
+        }
+      }
+    }
+  }
+
+  /** Exercise 20
+    *
+    * Implement the composition of two monads where one of them is traversable.
+    */
+  implicit class TraverseExtensions7[M[_]](tm: Traverse[M]) {
+    def composeM[F[_],G[_]](F: Monad[F], G: Monad[G], T: Traverse[G]) = new Monad[({type f[x] = F[G[x]]})#f] {
+      override def unit[A](a: => A): F[G[A]] = F.unit(G.unit(a))
+
+      override def flatMap[A, B](ma: F[G[A]])(f: (A) => F[G[B]]): F[G[B]] = F.flatMap(ma) { ga =>
+        F.map(T.traverse(ga)(f)) { gga =>
+          G.flatMap(gga)(identity)
+        }
+      }
+    }
+  }
+
+  
 }
