@@ -2,6 +2,7 @@ package com.github.robertberry.fpis
 
 import com.github.robertberry.fpis.Chapter11.Functor
 import com.github.robertberry.fpis.Chapter6.State
+import State._
 
 object Chapter12 {
   trait Applicative[F[_]] extends Functor[F] {
@@ -190,7 +191,7 @@ object Chapter12 {
     *
     * Write Traverse instances for List, Option, Map and Tree
     */
-  val listTraverse = new Traverse[List] {
+  implicit val listTraverse = new Traverse[List] {
     override def traverse[G[_]: Applicative, A, B](fa: List[A])(f: (A) => G[B]): G[List[B]] =
       implicitly[Applicative[G]].sequence(fa.map(f))
   }
@@ -240,7 +241,7 @@ object Chapter12 {
     override def unit[A](a: => A): Id[A] = a
   }
 
-  implicit class TraverseExtensions1[F[_]](traverse: Traverse[F]) {
+  implicit class TraverseExtensions1[F[_]](traverse: Traverse[F]) extends Functor[F] {
     def map[A, B](fa: F[A])(f: A => B): F[B] =
       traverse.traverse[Id, A, B](fa)(f)
   }
@@ -282,9 +283,30 @@ object Chapter12 {
   import Chapter11.stateMonad
 
   implicit class TraverseExtensions2[F[_]](traverse: Traverse[F]) {
-    def traverseS[S,A,B](fa: F[A])(f: A => State[S, B]): State[S, F[B]] =
+    def traverseS[S, A, B](fa: F[A])(f: A => State[S, B]): State[S, F[B]] =
       traverse.traverse[({type f[x] = State[S,x]})#f,A,B](fa)(f)(stateMonad)
+
+    def mapAccum[S, A, B](fa: F[A], s: S)(f: (A, S) => (B, S)): (F[B], S) = traverseS(fa)({ (a: A) =>
+      get[S] flatMap { s1: S =>
+        val (b, s2) = f(a, s1)
+        set[S](s2) map { _: Unit =>
+          b
+        }
+      }
+    }).run(s)
+
+    def toList[A](fa: F[A]): List[A] =
+      mapAccum(fa, List[A]())((a, s) => ((), a :: s))._2.reverse
   }
 
-
+  /** Exercise 16
+    *
+    * Write reverse for a traversable functor
+    */
+  implicit class TraverseExtensions3[F[_]](traverse: Traverse[F]) {
+    def reverse[A](fa: F[A]): F[A] = {
+      val as = traverse.mapAccum(fa, List.empty[A])((a, s) => ((), a :: s))._2
+      traverse.mapAccum(fa, as) { case (a, h :: t) => (h, t) }._1
+    }
+  }
 }
