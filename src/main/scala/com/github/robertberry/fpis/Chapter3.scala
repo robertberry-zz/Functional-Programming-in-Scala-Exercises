@@ -82,14 +82,7 @@ object Chapter3 {
     *
     * Implement reverse
     */
-  def reverse[A](as: List[A]): List[A] = {
-    @annotation.tailrec
-    def iter(as: List[A], acc: List[A]): List[A] = as match {
-      case Nil => acc
-      case h :: t => iter(t, h :: acc)
-    }
-    iter(as, Nil)
-  }
+  def reverse[A](as: List[A]): List[A] = foldLeft[A, List[A]](as, Nil)((acc, s) => s::acc)
 
   /** Exercise 13
     *
